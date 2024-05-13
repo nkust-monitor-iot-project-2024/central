@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package event;
+option go_package = "github.com/nkust-monitor-iot-project-2024/central/protos/eventpb";
+
+import "google/protobuf/timestamp.proto";
+
+message EventMetadata {
+    // The device ID that the event is associated with.
+    string device_id = 1;
+
+    // When the event was created.
+    google.protobuf.Timestamp timestamp = 2;
+}
+
+message EventInvaded {
+    EventMetadata metadata = 1;
+
+    repeated Invader invaders = 2;
+}
+
+message Invader {
+    // The ID of the invader.
+    string id = 1;
+
+    // The picture of this invader.
+    bytes picture = 2;
+
+    // The confidence of the invader. [0-1]
+    float confidence = 3;
+}

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package central;
+option go_package = "github.com/nkust-monitor-iot-project-2024/central/protos/centralpb";
+
+import "event.proto";
+
+service Central {
+  // TriggerEvent can be used by the client to trigger an event to the central server.
+  rpc TriggerEvent(TriggerEventRequest) returns (TriggerEventReply) {}
+}
+
+message TriggerEventRequest {
+  TriggerEventPayload payload = 1;
+}
+
+message TriggerEventPayload {
+  oneof event {
+    event.EventInvaded event_invaded = 1;
+  }
+}
+
+message TriggerEventReply {}
