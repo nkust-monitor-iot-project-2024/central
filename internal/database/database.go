@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
@@ -30,6 +31,10 @@ func (d *wrapper) Fs() *gridfs.Bucket {
 
 func ConnectByConfig(conf utils.Config) (Collection, error) {
 	uri := conf.String("mongo.uri")
+	if uri == "" {
+		return nil, errors.New("missing mongo URI (mongo.uri)")
+	}
+
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, fmt.Errorf("connect to mongo: %w", err)

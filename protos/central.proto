@@ -8,6 +8,9 @@ import "event.proto";
 service Central {
   // TriggerEvent can be used by the client to trigger an event to the central server.
   rpc TriggerEvent(TriggerEventRequest) returns (TriggerEventReply) {}
+
+  // RetrieveInvaderPicture can retrieve the picture of the invader.
+  rpc RetrieveInvaderPicture(RetrieveInvaderPictureRequest) returns (RetrieveInvaderPictureReply) {}
 }
 
 message TriggerEventRequest {
@@ -21,3 +24,12 @@ message TriggerEventPayload {
 }
 
 message TriggerEventReply {}
+
+message RetrieveInvaderPictureRequest {
+  string event_id = 1;  // 2fa
+  string invader_id = 2;
+}
+
+message RetrieveInvaderPictureReply {
+  bytes picture = 1;
+}

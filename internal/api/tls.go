@@ -9,14 +9,14 @@ import (
 )
 
 func GetTLSCertificateFromConfig(conf utils.Config) (credentials.TransportCredentials, error) {
-	caFile := conf.String("server.ca_file")
 	certFile := conf.String("server.cert_file")
+	keyFile := conf.String("server.key_file")
 
-	if caFile == "" || certFile == "" {
-		return nil, errors.New("missing CA or certificate file")
+	if certFile == "" || keyFile == "" {
+		return nil, errors.New("missing cert or key file")
 	}
 
-	cred, err := credentials.NewClientTLSFromFile(certFile, caFile)
+	cred, err := credentials.NewServerTLSFromFile(certFile, keyFile)
 	if err != nil {
 		return nil, fmt.Errorf("load TLS certificate: %w", err)
 	}

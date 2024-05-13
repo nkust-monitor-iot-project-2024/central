@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"net"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/api"
@@ -9,6 +10,7 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/centralpb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -27,9 +29,12 @@ func main() {
 	server := grpc.NewServer(grpc.Creds(cert))
 	service := central.NewService(logger, conf, db)
 	centralpb.RegisterCentralServer(server, service)
+	reflection.Register(server)
 
 	// Start the server
-	listener, err := net.Listen("tcp", ":"+conf.String("server.central.port"))
+	listenOn := ":" + conf.String("server.central.port")
+	slog.Info("starting central server", slog.String("listen", listenOn))
+	listener, err := net.Listen("tcp", listenOn)
 	if err != nil {
 		panic(err)
 	}
