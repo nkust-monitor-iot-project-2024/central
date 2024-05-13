@@ -6,11 +6,13 @@ import (
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/gridfs"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Collection interface {
 	Events() *mongo.Collection
+	Fs() *gridfs.Bucket
 }
 
 type wrapper struct {
@@ -19,6 +21,11 @@ type wrapper struct {
 
 func (d *wrapper) Events() *mongo.Collection {
 	return d.db.Collection("events")
+}
+
+func (d *wrapper) Fs() *gridfs.Bucket {
+	bucket, _ := gridfs.NewBucket(d.db)
+	return bucket
 }
 
 func ConnectByConfig(conf utils.Config) (Collection, error) {

@@ -7,6 +7,7 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/internal/api/central"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/database"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
+	"github.com/nkust-monitor-iot-project-2024/central/protos/centralpb"
 	"google.golang.org/grpc"
 )
 
@@ -25,7 +26,7 @@ func main() {
 
 	server := grpc.NewServer(grpc.Creds(cert))
 	service := central.NewService(logger, conf, db)
-	service.Register(server)
+	centralpb.RegisterCentralServer(server, service)
 
 	// Start the server
 	listener, err := net.Listen("tcp", ":"+conf.String("server.central.port"))
