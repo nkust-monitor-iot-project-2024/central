@@ -9,8 +9,8 @@ import (
 )
 
 func GetTLSCertificateFromConfig(conf *koanf.Koanf) (credentials.TransportCredentials, error) {
-	caFile := conf.String("tls.ca_file")
-	certFile := conf.String("tls.cert_file")
+	caFile := conf.String("server.ca_file")
+	certFile := conf.String("server.cert_file")
 
 	if caFile == "" || certFile == "" {
 		return nil, errors.New("missing CA or certificate file")
