@@ -1,3 +1,4 @@
+// Deprecated: unused?
 package notification
 
 // NotificationCode represents the notification code.
