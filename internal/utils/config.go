@@ -1,4 +1,4 @@
-package common
+package utils
 
 import (
 	"log/slog"
@@ -12,7 +12,9 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
-func NewConfig() *koanf.Koanf {
+type Config = *koanf.Koanf
+
+func NewConfig() Config {
 	conf := koanf.New(".")
 
 	// Docker friendly

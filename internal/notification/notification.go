@@ -3,7 +3,7 @@ package notification
 // NotificationCode represents the notification code.
 //
 // You can freely define the notification code as you like.
-// Just make sure the receiver of the notification knows how to handle it.
+// Make sure the receiver of the notification knows how to handle it.
 type NotificationCode string
 
 // Receiver represents the receiver of the notification.
