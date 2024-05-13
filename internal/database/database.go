@@ -21,8 +21,8 @@ func (d *wrapper) Events() *mongo.Collection {
 	return d.db.Collection("events")
 }
 
-func ConnectByConfig(config utils.Config) (Collection, error) {
-	uri := config.String("mongo.uri")
+func ConnectByConfig(conf utils.Config) (Collection, error) {
+	uri := conf.String("mongo.uri")
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, fmt.Errorf("connect to mongo: %w", err)

@@ -12,23 +12,23 @@ import (
 
 func main() {
 	logger := utils.NewLogger()
-	config := utils.NewConfig()
-	db, err := database.ConnectByConfig(config)
+	conf := utils.NewConfig()
+	db, err := database.ConnectByConfig(conf)
 	if err != nil {
 		panic(err)
 	}
 
-	cert, err := api.GetTLSCertificateFromConfig(config)
+	cert, err := api.GetTLSCertificateFromConfig(conf)
 	if err != nil {
 		panic(err)
 	}
 
 	server := grpc.NewServer(grpc.Creds(cert))
-	service := central.NewService(logger, config, db)
+	service := central.NewService(logger, conf, db)
 	service.Register(server)
 
 	// Start the server
-	listener, err := net.Listen("tcp", ":"+config.String("server.central.port"))
+	listener, err := net.Listen("tcp", ":"+conf.String("server.central.port"))
 	if err != nil {
 		panic(err)
 	}

@@ -17,10 +17,10 @@ type Service struct {
 	db     database.Collection
 }
 
-func NewService(parentLogger *slog.Logger, config *koanf.Koanf, database database.Collection) *Service {
+func NewService(parentLogger *slog.Logger, conf *koanf.Koanf, database database.Collection) *Service {
 	return &Service{
 		logger: parentLogger.With(slog.String("service", "central")),
-		config: config,
+		config: conf,
 		db:     database,
 	}
 }

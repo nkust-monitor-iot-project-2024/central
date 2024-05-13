@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/knadh/koanf/v2"
+	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"google.golang.org/grpc/credentials"
 )
 
-func GetTLSCertificateFromConfig(conf *koanf.Koanf) (credentials.TransportCredentials, error) {
+func GetTLSCertificateFromConfig(conf utils.Config) (credentials.TransportCredentials, error) {
 	caFile := conf.String("server.ca_file")
 	certFile := conf.String("server.cert_file")
 
