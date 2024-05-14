@@ -13,6 +13,7 @@ message EventMetadata {
     google.protobuf.Timestamp timestamp = 2;
 }
 
+// An event that is emitted when an invader is detected.
 message EventInvaded {
     EventMetadata metadata = 1;
 
@@ -20,12 +21,19 @@ message EventInvaded {
 }
 
 message Invader {
-    // The ID of the invader.
-    string id = 1;
+    reserved 1;
 
     // The picture of this invader.
     bytes picture = 2;
 
     // The confidence of the invader. [0-1]
     float confidence = 3;
+}
+
+// An event that is emitted when a movement is detected.
+message EventMovement {
+    EventMetadata metadata = 1;
+
+    // The picture of the room.
+    bytes picture = 2;
 }

@@ -13,10 +13,10 @@ type service struct {
 
 	logger *slog.Logger
 	config *koanf.Koanf
-	db     database.Collection
+	db     database.Database
 }
 
-func NewService(parentLogger *slog.Logger, conf *koanf.Koanf, database database.Collection) centralpb.CentralServer {
+func NewService(parentLogger *slog.Logger, conf *koanf.Koanf, database database.Database) centralpb.CentralServer {
 	return &service{
 		logger: parentLogger.With(slog.String("service", "central")),
 		config: conf,
