@@ -28,6 +28,9 @@ func (d *database) CreateMovementEvent(ctx context.Context, req *CreateMovementE
 	pictureID, err := d.Fs().UploadFromStream(
 		getMovementPath(eventID),
 		bytes.NewReader(picture),
+		options.GridFSUpload().SetMetadata(bson.M{
+			"eventID": eventID,
+		}),
 	)
 	if err != nil {
 		d.logger.ErrorContext(
@@ -46,6 +49,8 @@ func (d *database) CreateMovementEvent(ctx context.Context, req *CreateMovementE
 		Payload: models.EventPayload{
 			MovementPicture: lo.ToPtr(pictureID),
 		},
+		CreatedAt: time.Now(),
+		DeletedAt: nil,
 	})
 	if err != nil {
 		d.logger.ErrorContext(ctx, "failed to insert event", slogext.Error(err))
@@ -114,6 +119,7 @@ func (d *database) CreateInvadedEvent(ctx context.Context, req *CreateInvadedEve
 			Invader: lo.ToPtr(invaders),
 		},
 		CreatedAt: time.Now(),
+		DeletedAt: nil,
 	})
 	if err != nil {
 		d.logger.ErrorContext(ctx, "failed to insert event", slogext.Error(err))

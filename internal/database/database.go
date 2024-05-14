@@ -7,7 +7,6 @@ import (
 	"log/slog"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/gridfs"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -25,7 +24,7 @@ type DataLayer interface {
 	GetMovementPicture(context.Context, *GetMovementPictureRequest) (*GetMovementPictureResponse, error)
 	GetInvaderPicture(context.Context, *GetInvaderPictureRequest) (*GetInvaderPictureResponse, error)
 
-	DeleteEvents(context.Context, *DeleteEventsRequest) ([]primitive.ObjectID, error)
+	DeleteEvents(context.Context, *DeleteEventsRequest) (*DeleteEventsResponse, error)
 }
 
 type Database interface {

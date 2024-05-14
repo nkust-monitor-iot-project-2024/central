@@ -18,10 +18,7 @@ var (
 )
 
 func (d *database) GetMovementPicture(ctx context.Context, req *GetMovementPictureRequest) (*GetMovementPictureResponse, error) {
-	p, err := d.getPicture(ctx, getMovementPath(req.EventID))
-	if err != nil {
-		return nil, err
-	}
+	return d.getPicture(ctx, getMovementPath(req.EventID))
 }
 
 type GetMovementPictureRequest struct {

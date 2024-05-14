@@ -15,8 +15,8 @@ import (
 
 func main() {
 	logger := utils.NewLogger()
-	conf := utils.NewConfig()
-	db, err := database.ConnectByConfig(conf)
+	conf := utils.NewConfig(logger)
+	db, err := database.ConnectByConfig(conf, logger)
 	if err != nil {
 		panic(err)
 	}
@@ -33,7 +33,7 @@ func main() {
 
 	// Start the server
 	listenOn := ":" + conf.String("server.central.port")
-	slog.Info("starting central server", slog.String("listen", listenOn))
+	logger.Info("starting central server", slog.String("listen", listenOn))
 	listener, err := net.Listen("tcp", listenOn)
 	if err != nil {
 		panic(err)

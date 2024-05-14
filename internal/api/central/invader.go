@@ -30,4 +30,11 @@ func (s *service) RetrieveInvaderPicture(
 		EventID:   eventID,
 		InvaderID: invaderID,
 	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "get invader picture: %v", err)
+	}
+
+	return &centralpb.RetrieveInvaderPictureReply{
+		Picture: picture.Picture,
+	}, nil
 }

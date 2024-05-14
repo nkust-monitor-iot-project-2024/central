@@ -27,9 +27,9 @@ type Event struct {
 	Payload EventPayload `bson:"payload,omitempty"`
 
 	// CreatedAt is the timestamp when the record was created.
-	CreatedAt time.Time `bson:"created_at"`
+	CreatedAt time.Time `bson:"createdAt"`
 	// DeletedAt is the timestamp when the record was deleted.
-	DeletedAt *time.Time `bson:"deleted_at,omitempty"`
+	DeletedAt *time.Time `bson:"deletedAt,omitempty"`
 }
 
 // EventPayload represents a typed event payload.
@@ -54,13 +54,13 @@ type EventMovementInvaderDetected struct {
 	Invaded bool `bson:"invaded"`
 
 	// EventID is the ID to the invaded event.
-	EventID *primitive.ObjectID `bson:"invader_id"`
+	EventID *primitive.ObjectID `bson:"invaderID"`
 }
 
 // EventMetadata represents the metadata of the event.
 type EventMetadata struct {
 	// DeviceID is the unique identifier of the device.
-	DeviceID string `bson:"device_id"`
+	DeviceID string `bson:"deviceID"`
 
 	// Timestamp is the timestamp of the event.
 	Timestamp time.Time `bson:"timestamp"`

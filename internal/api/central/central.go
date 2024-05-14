@@ -1,6 +1,7 @@
 package central
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/knadh/koanf/v2"
@@ -17,9 +18,17 @@ type service struct {
 }
 
 func NewService(parentLogger *slog.Logger, conf *koanf.Koanf, database database.Database) centralpb.CentralServer {
-	return &service{
+	srv := &service{
 		logger: parentLogger.With(slog.String("service", "central")),
 		config: conf,
 		db:     database,
 	}
+
+	// tasks: gc
+	go func() {
+		ctx := context.WithValue(context.Background(), "background_task", "gc")
+		srv.gcEventLoop(ctx)
+	}()
+
+	return srv
 }
