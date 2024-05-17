@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package event;
+package eventpb;
 option go_package = "github.com/nkust-monitor-iot-project-2024/central/protos/eventpb";
 
 import "google/protobuf/timestamp.proto";

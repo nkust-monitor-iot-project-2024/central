@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package central;
+package centralpb;
 option go_package = "github.com/nkust-monitor-iot-project-2024/central/protos/centralpb";
 
-import "event.proto";
+import "eventpb/event.proto";
 
 service Central {
   // TriggerEvent can be used by the client to trigger an event to the central server.
@@ -21,12 +21,13 @@ message TriggerEventRequest {
 
 message TriggerEventPayload {
   oneof event {
-    event.EventInvaded event_invaded = 1;
-    event.EventMovement event_movement = 2;
+    eventpb.EventInvaded event_invaded = 1;
+    eventpb.EventMovement event_movement = 2;
   }
 }
 
-message TriggerEventReply {}
+message TriggerEventReply {
+}
 
 message RetrieveInvaderPictureRequest {
   string event_id = 1;  // 2fa
