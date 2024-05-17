@@ -16,7 +16,7 @@ import (
 func main() {
 	logger := utils.NewLogger()
 	conf := utils.NewConfig(logger)
-	db, err := database.ConnectByConfig(conf, logger)
+	db, err := database.ConnectAndMigrateByConfig(conf, logger)
 	if err != nil {
 		panic(err)
 	}
