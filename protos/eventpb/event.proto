@@ -5,6 +5,16 @@ option go_package = "github.com/nkust-monitor-iot-project-2024/central/protos/ev
 
 import "google/protobuf/timestamp.proto";
 
+message Event {
+    string id = 1;
+    google.protobuf.Timestamp created_at = 2;
+
+    oneof event {
+        eventpb.EventInvaded event_invaded = 10;
+        eventpb.EventMovement event_movement = 11;
+    }
+}
+
 message EventMetadata {
     // The device ID that the event is associated with.
     string device_id = 1;
