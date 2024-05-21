@@ -2,7 +2,7 @@ package models
 
 import (
 	"context"
-	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -31,28 +31,17 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 	// construct query
 	query := r.client.Event.Query()
 	query = query.Order(ent.Desc(event.FieldID))
-	if filter.Cursor != "" {
-		decodedUuidBytes, err := hex.DecodeString(filter.Cursor)
-		if err != nil {
-			return nil, fmt.Errorf("decode cursor: %w", err)
-		}
-		decodedUuid, err := uuid.FromBytes(decodedUuidBytes)
-		if err != nil {
-			return nil, fmt.Errorf("decode cursor: %w", err)
-		}
 
-		query = query.Where(event.IDLT(decodedUuid))
+	cursor, err := filter.GetCursorUUID()
+	if err != nil {
+		if !errors.Is(err, ErrNoCursor) {
+			return nil, fmt.Errorf("get cursor uuid: %w", err)
+		}
+	} else {
+		query = query.Where(event.IDGT(cursor))
 	}
 
-	limit := filter.Limit
-	switch {
-	case limit > 50:
-		limit = 50
-	case limit <= 0:
-		limit = 20
-	}
-
-	query = query.Limit(limit + 1)
+	query = query.Limit(filter.GetLimit())
 
 	// get response
 	eventsDao, err := query.All(ctx)
@@ -82,12 +71,8 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 	}
 
 	return &EventListResponse{
-		Events: events[:len(events)-1], // we ask limit+1, so we need to remove the last one
-		Pagination: PaginationInfo{
-			HasNextPage: len(events) <= limit,
-			StartCursor: UUIDToCursor(events[0].GetEventID()),
-			EndCursor:   UUIDToCursor(events[max(len(events)-2, 0)].GetEventID()),
-		},
+		Events:     events[:len(events)-1], // we ask limit+1, so we need to remove the last one
+		Pagination: GeneratePaginationInfo(events, filter.GetLimit()),
 	}, nil
 }
 
@@ -143,6 +128,25 @@ func (r *eventRepositoryEnt) transformEvent(ctx context.Context, eventDao *ent.E
 		return &InvadedEvent{
 			Metadata: metadata,
 			Invaders: invaders,
+		}, nil
+	case event.TypeMove:
+		if brief {
+			return &BriefEvent{
+				Metadata: metadata,
+				Type:     EventTypeMove,
+			}, nil
+		}
+
+		moveDao, err := eventDao.QueryMoves().Only(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("query moves: %w", err)
+		}
+
+		return &MoveEvent{
+			Metadata: metadata,
+			Move: Move{
+				Cycle: moveDao.Cycle,
+			},
 		}, nil
 	}
 

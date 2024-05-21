@@ -15,16 +15,8 @@ type Event interface {
 
 // BriefEvent represents a brief event (that did not contains anything detailed).
 type BriefEvent struct {
-	Metadata Metadata  `json:"metadata"`
+	Metadata `json:"metadata"`
 	Type     EventType `json:"type"`
-}
-
-func (b *BriefEvent) GetEventID() uuid.UUID {
-	return b.Metadata.GetEventID()
-}
-
-func (b *BriefEvent) GetEmittedAt() time.Time {
-	return b.Metadata.GetEmittedAt()
 }
 
 func (b *BriefEvent) GetType() EventType {
@@ -33,16 +25,8 @@ func (b *BriefEvent) GetType() EventType {
 
 // MovementEvent represents a movement event.
 type MovementEvent struct {
-	Metadata Metadata `json:"metadata"`
+	Metadata `json:"metadata"`
 	Movement Movement `json:"movement"`
-}
-
-func (m *MovementEvent) GetEventID() uuid.UUID {
-	return m.Metadata.GetEventID()
-}
-
-func (m *MovementEvent) GetEmittedAt() time.Time {
-	return m.Metadata.GetEmittedAt()
 }
 
 func (m *MovementEvent) GetType() EventType {
@@ -55,16 +39,8 @@ func (m *MovementEvent) GetPicture() []byte {
 
 // InvadedEvent represents an invaded event.
 type InvadedEvent struct {
-	Metadata Metadata  `json:"metadata"`
+	Metadata `json:"metadata"`
 	Invaders []Invader `json:"invaders"`
-}
-
-func (i *InvadedEvent) GetEventID() uuid.UUID {
-	return i.Metadata.GetEventID()
-}
-
-func (i *InvadedEvent) GetEmittedAt() time.Time {
-	return i.Metadata.GetEmittedAt()
 }
 
 func (i *InvadedEvent) GetType() EventType {
@@ -73,6 +49,20 @@ func (i *InvadedEvent) GetType() EventType {
 
 func (i *InvadedEvent) GetInvaders() []Invader {
 	return i.Invaders
+}
+
+// MoveEvent represents a move event.
+type MoveEvent struct {
+	Metadata `json:"metadata"`
+	Move     Move `json:"move"`
+}
+
+func (m *MoveEvent) GetType() EventType {
+	return EventTypeMove
+}
+
+func (m *MoveEvent) GetCycle() float64 {
+	return m.Move.GetCycle()
 }
 
 // Metadata represents an event.
@@ -120,4 +110,18 @@ func (i *Invader) GetPicture() []byte {
 
 func (i *Invader) GetConfidence() float64 {
 	return i.Confidence
+}
+
+// Move represents a move of an event.
+type Move struct {
+	MoveID uuid.UUID `json:"move_id"`
+	Cycle  float64   `json:"cycle"`
+}
+
+func (m *Move) GetMoveID() uuid.UUID {
+	return m.MoveID
+}
+
+func (m *Move) GetCycle() float64 {
+	return m.Cycle
 }

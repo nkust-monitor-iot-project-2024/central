@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -19,6 +20,9 @@ const (
 
 	// EventTypeInvaded is the type of invaded event.
 	EventTypeInvaded = EventType(event.TypeInvaded)
+
+	// EventTypeMove is the type of move event.
+	EventTypeMove = EventType(event.TypeMove)
 )
 
 type EventRepository interface {
@@ -47,8 +51,14 @@ func (f *EventListFilter) GetLimit() int {
 	return f.Limit
 }
 
-func (f *EventListFilter) GetCursor() (string, bool) {
-	return f.Cursor, f.Cursor != ""
+var ErrNoCursor = errors.New("no cursor")
+
+func (f *EventListFilter) GetCursorUUID() (uuid.UUID, error) {
+	if f.Cursor == "" {
+		return uuid.UUID{}, ErrNoCursor
+	}
+
+	return CursorToUUID(f.Cursor)
 }
 
 func (f *EventListFilter) GetEventType() mo.Option[EventType] {
