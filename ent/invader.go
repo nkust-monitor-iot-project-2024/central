@@ -8,6 +8,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/invader"
 )
 
@@ -15,7 +16,7 @@ import (
 type Invader struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int `json:"id,omitempty"`
+	ID uuid.UUID `json:"id,omitempty"`
 	// Picture holds the value of the "picture" field.
 	Picture []byte `json:"picture,omitempty"`
 	// Confidence holds the value of the "confidence" field.
@@ -54,7 +55,7 @@ func (*Invader) scanValues(columns []string) ([]any, error) {
 		case invader.FieldConfidence:
 			values[i] = new(sql.NullFloat64)
 		case invader.FieldID:
-			values[i] = new(sql.NullInt64)
+			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -71,11 +72,11 @@ func (i *Invader) assignValues(columns []string, values []any) error {
 	for j := range columns {
 		switch columns[j] {
 		case invader.FieldID:
-			value, ok := values[j].(*sql.NullInt64)
-			if !ok {
-				return fmt.Errorf("unexpected type %T for field id", value)
+			if value, ok := values[j].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field id", values[j])
+			} else if value != nil {
+				i.ID = *value
 			}
-			i.ID = int(value.Int64)
 		case invader.FieldPicture:
 			if value, ok := values[j].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field picture", values[j])

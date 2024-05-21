@@ -40,7 +40,7 @@ func (id *InvaderDelete) ExecX(ctx context.Context) int {
 }
 
 func (id *InvaderDelete) sqlExec(ctx context.Context) (int, error) {
-	_spec := sqlgraph.NewDeleteSpec(invader.Table, sqlgraph.NewFieldSpec(invader.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewDeleteSpec(invader.Table, sqlgraph.NewFieldSpec(invader.FieldID, field.TypeUUID))
 	if ps := id.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

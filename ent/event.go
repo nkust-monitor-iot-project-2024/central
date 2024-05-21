@@ -17,16 +17,44 @@ import (
 type Event struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int `json:"id,omitempty"`
-	// EventID holds the value of the "event_id" field.
-	EventID uuid.UUID `json:"event_id,omitempty"`
+	ID uuid.UUID `json:"id,omitempty"`
 	// Type holds the value of the "type" field.
 	Type event.Type `json:"type,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt         time.Time `json:"created_at,omitempty"`
-	invader_event_id  *int
-	movement_event_id *int
-	selectValues      sql.SelectValues
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the EventQuery when eager-loading is set.
+	Edges        EventEdges `json:"edges"`
+	selectValues sql.SelectValues
+}
+
+// EventEdges holds the relations/edges for other nodes in the graph.
+type EventEdges struct {
+	// Invaders holds the value of the invaders edge.
+	Invaders []*Invader `json:"invaders,omitempty"`
+	// Movements holds the value of the movements edge.
+	Movements []*Movement `json:"movements,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [2]bool
+}
+
+// InvadersOrErr returns the Invaders value or an error if the edge
+// was not loaded in eager-loading.
+func (e EventEdges) InvadersOrErr() ([]*Invader, error) {
+	if e.loadedTypes[0] {
+		return e.Invaders, nil
+	}
+	return nil, &NotLoadedError{edge: "invaders"}
+}
+
+// MovementsOrErr returns the Movements value or an error if the edge
+// was not loaded in eager-loading.
+func (e EventEdges) MovementsOrErr() ([]*Movement, error) {
+	if e.loadedTypes[1] {
+		return e.Movements, nil
+	}
+	return nil, &NotLoadedError{edge: "movements"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -34,18 +62,12 @@ func (*Event) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case event.FieldID:
-			values[i] = new(sql.NullInt64)
 		case event.FieldType:
 			values[i] = new(sql.NullString)
 		case event.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
-		case event.FieldEventID:
+		case event.FieldID:
 			values[i] = new(uuid.UUID)
-		case event.ForeignKeys[0]: // invader_event_id
-			values[i] = new(sql.NullInt64)
-		case event.ForeignKeys[1]: // movement_event_id
-			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -62,16 +84,10 @@ func (e *Event) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case event.FieldID:
-			value, ok := values[i].(*sql.NullInt64)
-			if !ok {
-				return fmt.Errorf("unexpected type %T for field id", value)
-			}
-			e.ID = int(value.Int64)
-		case event.FieldEventID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field event_id", values[i])
+				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
-				e.EventID = *value
+				e.ID = *value
 			}
 		case event.FieldType:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -85,20 +101,6 @@ func (e *Event) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				e.CreatedAt = value.Time
 			}
-		case event.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field invader_event_id", value)
-			} else if value.Valid {
-				e.invader_event_id = new(int)
-				*e.invader_event_id = int(value.Int64)
-			}
-		case event.ForeignKeys[1]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field movement_event_id", value)
-			} else if value.Valid {
-				e.movement_event_id = new(int)
-				*e.movement_event_id = int(value.Int64)
-			}
 		default:
 			e.selectValues.Set(columns[i], values[i])
 		}
@@ -110,6 +112,16 @@ func (e *Event) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (e *Event) Value(name string) (ent.Value, error) {
 	return e.selectValues.Get(name)
+}
+
+// QueryInvaders queries the "invaders" edge of the Event entity.
+func (e *Event) QueryInvaders() *InvaderQuery {
+	return NewEventClient(e.config).QueryInvaders(e)
+}
+
+// QueryMovements queries the "movements" edge of the Event entity.
+func (e *Event) QueryMovements() *MovementQuery {
+	return NewEventClient(e.config).QueryMovements(e)
 }
 
 // Update returns a builder for updating this Event.
@@ -135,9 +147,6 @@ func (e *Event) String() string {
 	var builder strings.Builder
 	builder.WriteString("Event(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", e.ID))
-	builder.WriteString("event_id=")
-	builder.WriteString(fmt.Sprintf("%v", e.EventID))
-	builder.WriteString(", ")
 	builder.WriteString("type=")
 	builder.WriteString(fmt.Sprintf("%v", e.Type))
 	builder.WriteString(", ")

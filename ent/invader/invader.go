@@ -20,13 +20,11 @@ const (
 	EdgeEventID = "event_id"
 	// Table holds the table name of the invader in the database.
 	Table = "invaders"
-	// EventIDTable is the table that holds the event_id relation/edge.
-	EventIDTable = "events"
+	// EventIDTable is the table that holds the event_id relation/edge. The primary key declared below.
+	EventIDTable = "event_invaders"
 	// EventIDInverseTable is the table name for the Event entity.
 	// It exists in this package in order to avoid circular dependency with the "event" package.
 	EventIDInverseTable = "events"
-	// EventIDColumn is the table column denoting the event_id relation/edge.
-	EventIDColumn = "invader_event_id"
 )
 
 // Columns holds all SQL columns for invader fields.
@@ -35,6 +33,12 @@ var Columns = []string{
 	FieldPicture,
 	FieldConfidence,
 }
+
+var (
+	// EventIDPrimaryKey and EventIDColumn2 are the table columns denoting the
+	// primary key for the event_id relation (M2M).
+	EventIDPrimaryKey = []string{"event_id", "invader_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -76,6 +80,6 @@ func newEventIDStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(EventIDInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, EventIDTable, EventIDColumn),
+		sqlgraph.Edge(sqlgraph.M2M, true, EventIDTable, EventIDPrimaryKey...),
 	)
 }

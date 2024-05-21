@@ -12,6 +12,8 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
+	"github.com/nkust-monitor-iot-project-2024/central/ent/invader"
+	"github.com/nkust-monitor-iot-project-2024/central/ent/movement"
 )
 
 // EventCreate is the builder for creating a Event entity.
@@ -19,12 +21,6 @@ type EventCreate struct {
 	config
 	mutation *EventMutation
 	hooks    []Hook
-}
-
-// SetEventID sets the "event_id" field.
-func (ec *EventCreate) SetEventID(u uuid.UUID) *EventCreate {
-	ec.mutation.SetEventID(u)
-	return ec
 }
 
 // SetType sets the "type" field.
@@ -45,6 +41,42 @@ func (ec *EventCreate) SetNillableCreatedAt(t *time.Time) *EventCreate {
 		ec.SetCreatedAt(*t)
 	}
 	return ec
+}
+
+// SetID sets the "id" field.
+func (ec *EventCreate) SetID(u uuid.UUID) *EventCreate {
+	ec.mutation.SetID(u)
+	return ec
+}
+
+// AddInvaderIDs adds the "invaders" edge to the Invader entity by IDs.
+func (ec *EventCreate) AddInvaderIDs(ids ...uuid.UUID) *EventCreate {
+	ec.mutation.AddInvaderIDs(ids...)
+	return ec
+}
+
+// AddInvaders adds the "invaders" edges to the Invader entity.
+func (ec *EventCreate) AddInvaders(i ...*Invader) *EventCreate {
+	ids := make([]uuid.UUID, len(i))
+	for j := range i {
+		ids[j] = i[j].ID
+	}
+	return ec.AddInvaderIDs(ids...)
+}
+
+// AddMovementIDs adds the "movements" edge to the Movement entity by IDs.
+func (ec *EventCreate) AddMovementIDs(ids ...uuid.UUID) *EventCreate {
+	ec.mutation.AddMovementIDs(ids...)
+	return ec
+}
+
+// AddMovements adds the "movements" edges to the Movement entity.
+func (ec *EventCreate) AddMovements(m ...*Movement) *EventCreate {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return ec.AddMovementIDs(ids...)
 }
 
 // Mutation returns the EventMutation object of the builder.
@@ -90,9 +122,6 @@ func (ec *EventCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (ec *EventCreate) check() error {
-	if _, ok := ec.mutation.EventID(); !ok {
-		return &ValidationError{Name: "event_id", err: errors.New(`ent: missing required field "Event.event_id"`)}
-	}
 	if _, ok := ec.mutation.GetType(); !ok {
 		return &ValidationError{Name: "type", err: errors.New(`ent: missing required field "Event.type"`)}
 	}
@@ -118,8 +147,13 @@ func (ec *EventCreate) sqlSave(ctx context.Context) (*Event, error) {
 		}
 		return nil, err
 	}
-	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
+	if _spec.ID.Value != nil {
+		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
+			_node.ID = *id
+		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+			return nil, err
+		}
+	}
 	ec.mutation.id = &_node.ID
 	ec.mutation.done = true
 	return _node, nil
@@ -128,11 +162,11 @@ func (ec *EventCreate) sqlSave(ctx context.Context) (*Event, error) {
 func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Event{config: ec.config}
-		_spec = sqlgraph.NewCreateSpec(event.Table, sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt))
+		_spec = sqlgraph.NewCreateSpec(event.Table, sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID))
 	)
-	if value, ok := ec.mutation.EventID(); ok {
-		_spec.SetField(event.FieldEventID, field.TypeUUID, value)
-		_node.EventID = value
+	if id, ok := ec.mutation.ID(); ok {
+		_node.ID = id
+		_spec.ID.Value = &id
 	}
 	if value, ok := ec.mutation.GetType(); ok {
 		_spec.SetField(event.FieldType, field.TypeEnum, value)
@@ -141,6 +175,38 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 	if value, ok := ec.mutation.CreatedAt(); ok {
 		_spec.SetField(event.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if nodes := ec.mutation.InvadersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.InvadersTable,
+			Columns: event.InvadersPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invader.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := ec.mutation.MovementsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.MovementsTable,
+			Columns: event.MovementsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(movement.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }
@@ -190,10 +256,6 @@ func (ecb *EventCreateBulk) Save(ctx context.Context) ([]*Event, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
-				if specs[i].ID.Value != nil {
-					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int(id)
-				}
 				mutation.done = true
 				return nodes[i], nil
 			})

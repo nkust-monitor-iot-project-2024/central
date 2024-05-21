@@ -9,6 +9,7 @@ import (
 	"log"
 	"reflect"
 
+	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/migrate"
 
 	"entgo.io/ent"
@@ -278,7 +279,7 @@ func (c *EventClient) UpdateOne(e *Event) *EventUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *EventClient) UpdateOneID(id int) *EventUpdateOne {
+func (c *EventClient) UpdateOneID(id uuid.UUID) *EventUpdateOne {
 	mutation := newEventMutation(c.config, OpUpdateOne, withEventID(id))
 	return &EventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -295,7 +296,7 @@ func (c *EventClient) DeleteOne(e *Event) *EventDeleteOne {
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *EventClient) DeleteOneID(id int) *EventDeleteOne {
+func (c *EventClient) DeleteOneID(id uuid.UUID) *EventDeleteOne {
 	builder := c.Delete().Where(event.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -312,17 +313,49 @@ func (c *EventClient) Query() *EventQuery {
 }
 
 // Get returns a Event entity by its id.
-func (c *EventClient) Get(ctx context.Context, id int) (*Event, error) {
+func (c *EventClient) Get(ctx context.Context, id uuid.UUID) (*Event, error) {
 	return c.Query().Where(event.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *EventClient) GetX(ctx context.Context, id int) *Event {
+func (c *EventClient) GetX(ctx context.Context, id uuid.UUID) *Event {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
 	}
 	return obj
+}
+
+// QueryInvaders queries the invaders edge of a Event.
+func (c *EventClient) QueryInvaders(e *Event) *InvaderQuery {
+	query := (&InvaderClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := e.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(event.Table, event.FieldID, id),
+			sqlgraph.To(invader.Table, invader.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, event.InvadersTable, event.InvadersPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(e.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryMovements queries the movements edge of a Event.
+func (c *EventClient) QueryMovements(e *Event) *MovementQuery {
+	query := (&MovementClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := e.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(event.Table, event.FieldID, id),
+			sqlgraph.To(movement.Table, movement.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, event.MovementsTable, event.MovementsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(e.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
 }
 
 // Hooks returns the client hooks.
@@ -411,7 +444,7 @@ func (c *InvaderClient) UpdateOne(i *Invader) *InvaderUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *InvaderClient) UpdateOneID(id int) *InvaderUpdateOne {
+func (c *InvaderClient) UpdateOneID(id uuid.UUID) *InvaderUpdateOne {
 	mutation := newInvaderMutation(c.config, OpUpdateOne, withInvaderID(id))
 	return &InvaderUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -428,7 +461,7 @@ func (c *InvaderClient) DeleteOne(i *Invader) *InvaderDeleteOne {
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *InvaderClient) DeleteOneID(id int) *InvaderDeleteOne {
+func (c *InvaderClient) DeleteOneID(id uuid.UUID) *InvaderDeleteOne {
 	builder := c.Delete().Where(invader.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -445,12 +478,12 @@ func (c *InvaderClient) Query() *InvaderQuery {
 }
 
 // Get returns a Invader entity by its id.
-func (c *InvaderClient) Get(ctx context.Context, id int) (*Invader, error) {
+func (c *InvaderClient) Get(ctx context.Context, id uuid.UUID) (*Invader, error) {
 	return c.Query().Where(invader.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *InvaderClient) GetX(ctx context.Context, id int) *Invader {
+func (c *InvaderClient) GetX(ctx context.Context, id uuid.UUID) *Invader {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -466,7 +499,7 @@ func (c *InvaderClient) QueryEventID(i *Invader) *EventQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(invader.Table, invader.FieldID, id),
 			sqlgraph.To(event.Table, event.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, invader.EventIDTable, invader.EventIDColumn),
+			sqlgraph.Edge(sqlgraph.M2M, true, invader.EventIDTable, invader.EventIDPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(i.driver.Dialect(), step)
 		return fromV, nil
@@ -560,7 +593,7 @@ func (c *MovementClient) UpdateOne(m *Movement) *MovementUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *MovementClient) UpdateOneID(id int) *MovementUpdateOne {
+func (c *MovementClient) UpdateOneID(id uuid.UUID) *MovementUpdateOne {
 	mutation := newMovementMutation(c.config, OpUpdateOne, withMovementID(id))
 	return &MovementUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -577,7 +610,7 @@ func (c *MovementClient) DeleteOne(m *Movement) *MovementDeleteOne {
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *MovementClient) DeleteOneID(id int) *MovementDeleteOne {
+func (c *MovementClient) DeleteOneID(id uuid.UUID) *MovementDeleteOne {
 	builder := c.Delete().Where(movement.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -594,12 +627,12 @@ func (c *MovementClient) Query() *MovementQuery {
 }
 
 // Get returns a Movement entity by its id.
-func (c *MovementClient) Get(ctx context.Context, id int) (*Movement, error) {
+func (c *MovementClient) Get(ctx context.Context, id uuid.UUID) (*Movement, error) {
 	return c.Query().Where(movement.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *MovementClient) GetX(ctx context.Context, id int) *Movement {
+func (c *MovementClient) GetX(ctx context.Context, id uuid.UUID) *Movement {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -615,7 +648,7 @@ func (c *MovementClient) QueryEventID(m *Movement) *EventQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(movement.Table, movement.FieldID, id),
 			sqlgraph.To(event.Table, event.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, movement.EventIDTable, movement.EventIDColumn),
+			sqlgraph.Edge(sqlgraph.M2M, true, movement.EventIDTable, movement.EventIDPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(m.driver.Dialect(), step)
 		return fromV, nil

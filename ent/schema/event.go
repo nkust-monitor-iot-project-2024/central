@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 )
@@ -16,7 +17,7 @@ type Event struct {
 // Fields of the Event.
 func (Event) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("event_id", uuid.New()),
+		field.UUID("id", uuid.Must(uuid.NewUUID())),
 		field.Enum("type").Values("invaded", "movement"),
 		field.Time("created_at").Default(time.Now),
 	}
@@ -24,5 +25,8 @@ func (Event) Fields() []ent.Field {
 
 // Edges of the Event.
 func (Event) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{
+		edge.To("invaders", Invader.Type),
+		edge.To("movements", Movement.Type),
+	}
 }

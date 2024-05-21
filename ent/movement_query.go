@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/movement"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/predicate"
@@ -74,7 +75,7 @@ func (mq *MovementQuery) QueryEventID() *EventQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(movement.Table, movement.FieldID, selector),
 			sqlgraph.To(event.Table, event.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, movement.EventIDTable, movement.EventIDColumn),
+			sqlgraph.Edge(sqlgraph.M2M, true, movement.EventIDTable, movement.EventIDPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(mq.driver.Dialect(), step)
 		return fromU, nil
@@ -106,8 +107,8 @@ func (mq *MovementQuery) FirstX(ctx context.Context) *Movement {
 
 // FirstID returns the first Movement ID from the query.
 // Returns a *NotFoundError when no Movement ID was found.
-func (mq *MovementQuery) FirstID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (mq *MovementQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+	var ids []uuid.UUID
 	if ids, err = mq.Limit(1).IDs(setContextOp(ctx, mq.ctx, "FirstID")); err != nil {
 		return
 	}
@@ -119,7 +120,7 @@ func (mq *MovementQuery) FirstID(ctx context.Context) (id int, err error) {
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (mq *MovementQuery) FirstIDX(ctx context.Context) int {
+func (mq *MovementQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	id, err := mq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -157,8 +158,8 @@ func (mq *MovementQuery) OnlyX(ctx context.Context) *Movement {
 // OnlyID is like Only, but returns the only Movement ID in the query.
 // Returns a *NotSingularError when more than one Movement ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (mq *MovementQuery) OnlyID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (mq *MovementQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+	var ids []uuid.UUID
 	if ids, err = mq.Limit(2).IDs(setContextOp(ctx, mq.ctx, "OnlyID")); err != nil {
 		return
 	}
@@ -174,7 +175,7 @@ func (mq *MovementQuery) OnlyID(ctx context.Context) (id int, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (mq *MovementQuery) OnlyIDX(ctx context.Context) int {
+func (mq *MovementQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	id, err := mq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -202,7 +203,7 @@ func (mq *MovementQuery) AllX(ctx context.Context) []*Movement {
 }
 
 // IDs executes the query and returns a list of Movement IDs.
-func (mq *MovementQuery) IDs(ctx context.Context) (ids []int, err error) {
+func (mq *MovementQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
 	if mq.ctx.Unique == nil && mq.path != nil {
 		mq.Unique(true)
 	}
@@ -214,7 +215,7 @@ func (mq *MovementQuery) IDs(ctx context.Context) (ids []int, err error) {
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (mq *MovementQuery) IDsX(ctx context.Context) []int {
+func (mq *MovementQuery) IDsX(ctx context.Context) []uuid.UUID {
 	ids, err := mq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -403,33 +404,63 @@ func (mq *MovementQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Mov
 }
 
 func (mq *MovementQuery) loadEventID(ctx context.Context, query *EventQuery, nodes []*Movement, init func(*Movement), assign func(*Movement, *Event)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*Movement)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[uuid.UUID]*Movement)
+	nids := make(map[uuid.UUID]map[*Movement]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
 		if init != nil {
-			init(nodes[i])
+			init(node)
 		}
 	}
-	query.withFKs = true
-	query.Where(predicate.Event(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(movement.EventIDColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(movement.EventIDTable)
+		s.Join(joinT).On(s.C(event.FieldID), joinT.C(movement.EventIDPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(movement.EventIDPrimaryKey[1]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(movement.EventIDPrimaryKey[1]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(uuid.UUID)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := *values[0].(*uuid.UUID)
+				inValue := *values[1].(*uuid.UUID)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*Movement]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Event](ctx, query, qr, query.inters)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.movement_event_id
-		if fk == nil {
-			return fmt.Errorf(`foreign-key "movement_event_id" is nil for node %v`, n.ID)
-		}
-		node, ok := nodeids[*fk]
+		nodes, ok := nids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "movement_event_id" returned %v for node %v`, *fk, n.ID)
+			return fmt.Errorf(`unexpected "event_id" node returned %v`, n.ID)
 		}
-		assign(node, n)
+		for kn := range nodes {
+			assign(kn, n)
+		}
 	}
 	return nil
 }
@@ -444,7 +475,7 @@ func (mq *MovementQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (mq *MovementQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(movement.Table, movement.Columns, sqlgraph.NewFieldSpec(movement.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewQuerySpec(movement.Table, movement.Columns, sqlgraph.NewFieldSpec(movement.FieldID, field.TypeUUID))
 	_spec.From = mq.sql
 	if unique := mq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique

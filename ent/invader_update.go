@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/invader"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/predicate"
@@ -56,14 +57,14 @@ func (iu *InvaderUpdate) AddConfidence(f float64) *InvaderUpdate {
 }
 
 // AddEventIDIDs adds the "event_id" edge to the Event entity by IDs.
-func (iu *InvaderUpdate) AddEventIDIDs(ids ...int) *InvaderUpdate {
+func (iu *InvaderUpdate) AddEventIDIDs(ids ...uuid.UUID) *InvaderUpdate {
 	iu.mutation.AddEventIDIDs(ids...)
 	return iu
 }
 
 // AddEventID adds the "event_id" edges to the Event entity.
 func (iu *InvaderUpdate) AddEventID(e ...*Event) *InvaderUpdate {
-	ids := make([]int, len(e))
+	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
@@ -82,14 +83,14 @@ func (iu *InvaderUpdate) ClearEventID() *InvaderUpdate {
 }
 
 // RemoveEventIDIDs removes the "event_id" edge to Event entities by IDs.
-func (iu *InvaderUpdate) RemoveEventIDIDs(ids ...int) *InvaderUpdate {
+func (iu *InvaderUpdate) RemoveEventIDIDs(ids ...uuid.UUID) *InvaderUpdate {
 	iu.mutation.RemoveEventIDIDs(ids...)
 	return iu
 }
 
 // RemoveEventID removes "event_id" edges to Event entities.
 func (iu *InvaderUpdate) RemoveEventID(e ...*Event) *InvaderUpdate {
-	ids := make([]int, len(e))
+	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
@@ -124,7 +125,7 @@ func (iu *InvaderUpdate) ExecX(ctx context.Context) {
 }
 
 func (iu *InvaderUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	_spec := sqlgraph.NewUpdateSpec(invader.Table, invader.Columns, sqlgraph.NewFieldSpec(invader.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewUpdateSpec(invader.Table, invader.Columns, sqlgraph.NewFieldSpec(invader.FieldID, field.TypeUUID))
 	if ps := iu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -143,26 +144,26 @@ func (iu *InvaderUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if iu.mutation.EventIDCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   invader.EventIDTable,
-			Columns: []string{invader.EventIDColumn},
+			Columns: invader.EventIDPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := iu.mutation.RemovedEventIDIDs(); len(nodes) > 0 && !iu.mutation.EventIDCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   invader.EventIDTable,
-			Columns: []string{invader.EventIDColumn},
+			Columns: invader.EventIDPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -172,13 +173,13 @@ func (iu *InvaderUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if nodes := iu.mutation.EventIDIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   invader.EventIDTable,
-			Columns: []string{invader.EventIDColumn},
+			Columns: invader.EventIDPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -234,14 +235,14 @@ func (iuo *InvaderUpdateOne) AddConfidence(f float64) *InvaderUpdateOne {
 }
 
 // AddEventIDIDs adds the "event_id" edge to the Event entity by IDs.
-func (iuo *InvaderUpdateOne) AddEventIDIDs(ids ...int) *InvaderUpdateOne {
+func (iuo *InvaderUpdateOne) AddEventIDIDs(ids ...uuid.UUID) *InvaderUpdateOne {
 	iuo.mutation.AddEventIDIDs(ids...)
 	return iuo
 }
 
 // AddEventID adds the "event_id" edges to the Event entity.
 func (iuo *InvaderUpdateOne) AddEventID(e ...*Event) *InvaderUpdateOne {
-	ids := make([]int, len(e))
+	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
@@ -260,14 +261,14 @@ func (iuo *InvaderUpdateOne) ClearEventID() *InvaderUpdateOne {
 }
 
 // RemoveEventIDIDs removes the "event_id" edge to Event entities by IDs.
-func (iuo *InvaderUpdateOne) RemoveEventIDIDs(ids ...int) *InvaderUpdateOne {
+func (iuo *InvaderUpdateOne) RemoveEventIDIDs(ids ...uuid.UUID) *InvaderUpdateOne {
 	iuo.mutation.RemoveEventIDIDs(ids...)
 	return iuo
 }
 
 // RemoveEventID removes "event_id" edges to Event entities.
 func (iuo *InvaderUpdateOne) RemoveEventID(e ...*Event) *InvaderUpdateOne {
-	ids := make([]int, len(e))
+	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
@@ -315,7 +316,7 @@ func (iuo *InvaderUpdateOne) ExecX(ctx context.Context) {
 }
 
 func (iuo *InvaderUpdateOne) sqlSave(ctx context.Context) (_node *Invader, err error) {
-	_spec := sqlgraph.NewUpdateSpec(invader.Table, invader.Columns, sqlgraph.NewFieldSpec(invader.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewUpdateSpec(invader.Table, invader.Columns, sqlgraph.NewFieldSpec(invader.FieldID, field.TypeUUID))
 	id, ok := iuo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Invader.id" for update`)}
@@ -351,26 +352,26 @@ func (iuo *InvaderUpdateOne) sqlSave(ctx context.Context) (_node *Invader, err e
 	}
 	if iuo.mutation.EventIDCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   invader.EventIDTable,
-			Columns: []string{invader.EventIDColumn},
+			Columns: invader.EventIDPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := iuo.mutation.RemovedEventIDIDs(); len(nodes) > 0 && !iuo.mutation.EventIDCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   invader.EventIDTable,
-			Columns: []string{invader.EventIDColumn},
+			Columns: invader.EventIDPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -380,13 +381,13 @@ func (iuo *InvaderUpdateOne) sqlSave(ctx context.Context) (_node *Invader, err e
 	}
 	if nodes := iuo.mutation.EventIDIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   invader.EventIDTable,
-			Columns: []string{invader.EventIDColumn},
+			Columns: invader.EventIDPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/invader"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/predicate"
@@ -74,7 +75,7 @@ func (iq *InvaderQuery) QueryEventID() *EventQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(invader.Table, invader.FieldID, selector),
 			sqlgraph.To(event.Table, event.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, invader.EventIDTable, invader.EventIDColumn),
+			sqlgraph.Edge(sqlgraph.M2M, true, invader.EventIDTable, invader.EventIDPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(iq.driver.Dialect(), step)
 		return fromU, nil
@@ -106,8 +107,8 @@ func (iq *InvaderQuery) FirstX(ctx context.Context) *Invader {
 
 // FirstID returns the first Invader ID from the query.
 // Returns a *NotFoundError when no Invader ID was found.
-func (iq *InvaderQuery) FirstID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (iq *InvaderQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+	var ids []uuid.UUID
 	if ids, err = iq.Limit(1).IDs(setContextOp(ctx, iq.ctx, "FirstID")); err != nil {
 		return
 	}
@@ -119,7 +120,7 @@ func (iq *InvaderQuery) FirstID(ctx context.Context) (id int, err error) {
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (iq *InvaderQuery) FirstIDX(ctx context.Context) int {
+func (iq *InvaderQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	id, err := iq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -157,8 +158,8 @@ func (iq *InvaderQuery) OnlyX(ctx context.Context) *Invader {
 // OnlyID is like Only, but returns the only Invader ID in the query.
 // Returns a *NotSingularError when more than one Invader ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (iq *InvaderQuery) OnlyID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (iq *InvaderQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+	var ids []uuid.UUID
 	if ids, err = iq.Limit(2).IDs(setContextOp(ctx, iq.ctx, "OnlyID")); err != nil {
 		return
 	}
@@ -174,7 +175,7 @@ func (iq *InvaderQuery) OnlyID(ctx context.Context) (id int, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (iq *InvaderQuery) OnlyIDX(ctx context.Context) int {
+func (iq *InvaderQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	id, err := iq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -202,7 +203,7 @@ func (iq *InvaderQuery) AllX(ctx context.Context) []*Invader {
 }
 
 // IDs executes the query and returns a list of Invader IDs.
-func (iq *InvaderQuery) IDs(ctx context.Context) (ids []int, err error) {
+func (iq *InvaderQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
 	if iq.ctx.Unique == nil && iq.path != nil {
 		iq.Unique(true)
 	}
@@ -214,7 +215,7 @@ func (iq *InvaderQuery) IDs(ctx context.Context) (ids []int, err error) {
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (iq *InvaderQuery) IDsX(ctx context.Context) []int {
+func (iq *InvaderQuery) IDsX(ctx context.Context) []uuid.UUID {
 	ids, err := iq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -403,33 +404,63 @@ func (iq *InvaderQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Inva
 }
 
 func (iq *InvaderQuery) loadEventID(ctx context.Context, query *EventQuery, nodes []*Invader, init func(*Invader), assign func(*Invader, *Event)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*Invader)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[uuid.UUID]*Invader)
+	nids := make(map[uuid.UUID]map[*Invader]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
 		if init != nil {
-			init(nodes[i])
+			init(node)
 		}
 	}
-	query.withFKs = true
-	query.Where(predicate.Event(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(invader.EventIDColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(invader.EventIDTable)
+		s.Join(joinT).On(s.C(event.FieldID), joinT.C(invader.EventIDPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(invader.EventIDPrimaryKey[1]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(invader.EventIDPrimaryKey[1]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(uuid.UUID)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := *values[0].(*uuid.UUID)
+				inValue := *values[1].(*uuid.UUID)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*Invader]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Event](ctx, query, qr, query.inters)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.invader_event_id
-		if fk == nil {
-			return fmt.Errorf(`foreign-key "invader_event_id" is nil for node %v`, n.ID)
-		}
-		node, ok := nodeids[*fk]
+		nodes, ok := nids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "invader_event_id" returned %v for node %v`, *fk, n.ID)
+			return fmt.Errorf(`unexpected "event_id" node returned %v`, n.ID)
 		}
-		assign(node, n)
+		for kn := range nodes {
+			assign(kn, n)
+		}
 	}
 	return nil
 }
@@ -444,7 +475,7 @@ func (iq *InvaderQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (iq *InvaderQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(invader.Table, invader.Columns, sqlgraph.NewFieldSpec(invader.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewQuerySpec(invader.Table, invader.Columns, sqlgraph.NewFieldSpec(invader.FieldID, field.TypeUUID))
 	_spec.From = iq.sql
 	if unique := iq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique

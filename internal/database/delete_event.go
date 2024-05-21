@@ -23,7 +23,7 @@ func (d *database) DeleteEvents(ctx context.Context, req *DeleteEventsRequest) (
 	var deletedEvents []primitive.ObjectID
 
 	for cursor.Next(ctx) {
-		var event models.Event
+		var event models.Metadata
 
 		if err := cursor.Decode(&event); err != nil {
 			d.logger.ErrorContext(ctx, "failed to decode event", slogext.Error(err))

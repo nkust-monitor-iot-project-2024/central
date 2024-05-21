@@ -13,6 +13,8 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
+	"github.com/nkust-monitor-iot-project-2024/central/ent/invader"
+	"github.com/nkust-monitor-iot-project-2024/central/ent/movement"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/predicate"
 )
 
@@ -26,20 +28,6 @@ type EventUpdate struct {
 // Where appends a list predicates to the EventUpdate builder.
 func (eu *EventUpdate) Where(ps ...predicate.Event) *EventUpdate {
 	eu.mutation.Where(ps...)
-	return eu
-}
-
-// SetEventID sets the "event_id" field.
-func (eu *EventUpdate) SetEventID(u uuid.UUID) *EventUpdate {
-	eu.mutation.SetEventID(u)
-	return eu
-}
-
-// SetNillableEventID sets the "event_id" field if the given value is not nil.
-func (eu *EventUpdate) SetNillableEventID(u *uuid.UUID) *EventUpdate {
-	if u != nil {
-		eu.SetEventID(*u)
-	}
 	return eu
 }
 
@@ -71,9 +59,81 @@ func (eu *EventUpdate) SetNillableCreatedAt(t *time.Time) *EventUpdate {
 	return eu
 }
 
+// AddInvaderIDs adds the "invaders" edge to the Invader entity by IDs.
+func (eu *EventUpdate) AddInvaderIDs(ids ...uuid.UUID) *EventUpdate {
+	eu.mutation.AddInvaderIDs(ids...)
+	return eu
+}
+
+// AddInvaders adds the "invaders" edges to the Invader entity.
+func (eu *EventUpdate) AddInvaders(i ...*Invader) *EventUpdate {
+	ids := make([]uuid.UUID, len(i))
+	for j := range i {
+		ids[j] = i[j].ID
+	}
+	return eu.AddInvaderIDs(ids...)
+}
+
+// AddMovementIDs adds the "movements" edge to the Movement entity by IDs.
+func (eu *EventUpdate) AddMovementIDs(ids ...uuid.UUID) *EventUpdate {
+	eu.mutation.AddMovementIDs(ids...)
+	return eu
+}
+
+// AddMovements adds the "movements" edges to the Movement entity.
+func (eu *EventUpdate) AddMovements(m ...*Movement) *EventUpdate {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return eu.AddMovementIDs(ids...)
+}
+
 // Mutation returns the EventMutation object of the builder.
 func (eu *EventUpdate) Mutation() *EventMutation {
 	return eu.mutation
+}
+
+// ClearInvaders clears all "invaders" edges to the Invader entity.
+func (eu *EventUpdate) ClearInvaders() *EventUpdate {
+	eu.mutation.ClearInvaders()
+	return eu
+}
+
+// RemoveInvaderIDs removes the "invaders" edge to Invader entities by IDs.
+func (eu *EventUpdate) RemoveInvaderIDs(ids ...uuid.UUID) *EventUpdate {
+	eu.mutation.RemoveInvaderIDs(ids...)
+	return eu
+}
+
+// RemoveInvaders removes "invaders" edges to Invader entities.
+func (eu *EventUpdate) RemoveInvaders(i ...*Invader) *EventUpdate {
+	ids := make([]uuid.UUID, len(i))
+	for j := range i {
+		ids[j] = i[j].ID
+	}
+	return eu.RemoveInvaderIDs(ids...)
+}
+
+// ClearMovements clears all "movements" edges to the Movement entity.
+func (eu *EventUpdate) ClearMovements() *EventUpdate {
+	eu.mutation.ClearMovements()
+	return eu
+}
+
+// RemoveMovementIDs removes the "movements" edge to Movement entities by IDs.
+func (eu *EventUpdate) RemoveMovementIDs(ids ...uuid.UUID) *EventUpdate {
+	eu.mutation.RemoveMovementIDs(ids...)
+	return eu
+}
+
+// RemoveMovements removes "movements" edges to Movement entities.
+func (eu *EventUpdate) RemoveMovements(m ...*Movement) *EventUpdate {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return eu.RemoveMovementIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -117,7 +177,7 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if err := eu.check(); err != nil {
 		return n, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(event.Table, event.Columns, sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewUpdateSpec(event.Table, event.Columns, sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID))
 	if ps := eu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -125,14 +185,101 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := eu.mutation.EventID(); ok {
-		_spec.SetField(event.FieldEventID, field.TypeUUID, value)
-	}
 	if value, ok := eu.mutation.GetType(); ok {
 		_spec.SetField(event.FieldType, field.TypeEnum, value)
 	}
 	if value, ok := eu.mutation.CreatedAt(); ok {
 		_spec.SetField(event.FieldCreatedAt, field.TypeTime, value)
+	}
+	if eu.mutation.InvadersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.InvadersTable,
+			Columns: event.InvadersPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invader.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := eu.mutation.RemovedInvadersIDs(); len(nodes) > 0 && !eu.mutation.InvadersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.InvadersTable,
+			Columns: event.InvadersPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invader.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := eu.mutation.InvadersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.InvadersTable,
+			Columns: event.InvadersPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invader.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if eu.mutation.MovementsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.MovementsTable,
+			Columns: event.MovementsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(movement.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := eu.mutation.RemovedMovementsIDs(); len(nodes) > 0 && !eu.mutation.MovementsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.MovementsTable,
+			Columns: event.MovementsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(movement.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := eu.mutation.MovementsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.MovementsTable,
+			Columns: event.MovementsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(movement.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, eu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -152,20 +299,6 @@ type EventUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *EventMutation
-}
-
-// SetEventID sets the "event_id" field.
-func (euo *EventUpdateOne) SetEventID(u uuid.UUID) *EventUpdateOne {
-	euo.mutation.SetEventID(u)
-	return euo
-}
-
-// SetNillableEventID sets the "event_id" field if the given value is not nil.
-func (euo *EventUpdateOne) SetNillableEventID(u *uuid.UUID) *EventUpdateOne {
-	if u != nil {
-		euo.SetEventID(*u)
-	}
-	return euo
 }
 
 // SetType sets the "type" field.
@@ -196,9 +329,81 @@ func (euo *EventUpdateOne) SetNillableCreatedAt(t *time.Time) *EventUpdateOne {
 	return euo
 }
 
+// AddInvaderIDs adds the "invaders" edge to the Invader entity by IDs.
+func (euo *EventUpdateOne) AddInvaderIDs(ids ...uuid.UUID) *EventUpdateOne {
+	euo.mutation.AddInvaderIDs(ids...)
+	return euo
+}
+
+// AddInvaders adds the "invaders" edges to the Invader entity.
+func (euo *EventUpdateOne) AddInvaders(i ...*Invader) *EventUpdateOne {
+	ids := make([]uuid.UUID, len(i))
+	for j := range i {
+		ids[j] = i[j].ID
+	}
+	return euo.AddInvaderIDs(ids...)
+}
+
+// AddMovementIDs adds the "movements" edge to the Movement entity by IDs.
+func (euo *EventUpdateOne) AddMovementIDs(ids ...uuid.UUID) *EventUpdateOne {
+	euo.mutation.AddMovementIDs(ids...)
+	return euo
+}
+
+// AddMovements adds the "movements" edges to the Movement entity.
+func (euo *EventUpdateOne) AddMovements(m ...*Movement) *EventUpdateOne {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return euo.AddMovementIDs(ids...)
+}
+
 // Mutation returns the EventMutation object of the builder.
 func (euo *EventUpdateOne) Mutation() *EventMutation {
 	return euo.mutation
+}
+
+// ClearInvaders clears all "invaders" edges to the Invader entity.
+func (euo *EventUpdateOne) ClearInvaders() *EventUpdateOne {
+	euo.mutation.ClearInvaders()
+	return euo
+}
+
+// RemoveInvaderIDs removes the "invaders" edge to Invader entities by IDs.
+func (euo *EventUpdateOne) RemoveInvaderIDs(ids ...uuid.UUID) *EventUpdateOne {
+	euo.mutation.RemoveInvaderIDs(ids...)
+	return euo
+}
+
+// RemoveInvaders removes "invaders" edges to Invader entities.
+func (euo *EventUpdateOne) RemoveInvaders(i ...*Invader) *EventUpdateOne {
+	ids := make([]uuid.UUID, len(i))
+	for j := range i {
+		ids[j] = i[j].ID
+	}
+	return euo.RemoveInvaderIDs(ids...)
+}
+
+// ClearMovements clears all "movements" edges to the Movement entity.
+func (euo *EventUpdateOne) ClearMovements() *EventUpdateOne {
+	euo.mutation.ClearMovements()
+	return euo
+}
+
+// RemoveMovementIDs removes the "movements" edge to Movement entities by IDs.
+func (euo *EventUpdateOne) RemoveMovementIDs(ids ...uuid.UUID) *EventUpdateOne {
+	euo.mutation.RemoveMovementIDs(ids...)
+	return euo
+}
+
+// RemoveMovements removes "movements" edges to Movement entities.
+func (euo *EventUpdateOne) RemoveMovements(m ...*Movement) *EventUpdateOne {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return euo.RemoveMovementIDs(ids...)
 }
 
 // Where appends a list predicates to the EventUpdate builder.
@@ -255,7 +460,7 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 	if err := euo.check(); err != nil {
 		return _node, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(event.Table, event.Columns, sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewUpdateSpec(event.Table, event.Columns, sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID))
 	id, ok := euo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Event.id" for update`)}
@@ -280,14 +485,101 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 			}
 		}
 	}
-	if value, ok := euo.mutation.EventID(); ok {
-		_spec.SetField(event.FieldEventID, field.TypeUUID, value)
-	}
 	if value, ok := euo.mutation.GetType(); ok {
 		_spec.SetField(event.FieldType, field.TypeEnum, value)
 	}
 	if value, ok := euo.mutation.CreatedAt(); ok {
 		_spec.SetField(event.FieldCreatedAt, field.TypeTime, value)
+	}
+	if euo.mutation.InvadersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.InvadersTable,
+			Columns: event.InvadersPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invader.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := euo.mutation.RemovedInvadersIDs(); len(nodes) > 0 && !euo.mutation.InvadersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.InvadersTable,
+			Columns: event.InvadersPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invader.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := euo.mutation.InvadersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.InvadersTable,
+			Columns: event.InvadersPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invader.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if euo.mutation.MovementsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.MovementsTable,
+			Columns: event.MovementsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(movement.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := euo.mutation.RemovedMovementsIDs(); len(nodes) > 0 && !euo.mutation.MovementsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.MovementsTable,
+			Columns: event.MovementsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(movement.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := euo.mutation.MovementsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.MovementsTable,
+			Columns: event.MovementsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(movement.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Event{config: euo.config}
 	_spec.Assign = _node.assignValues

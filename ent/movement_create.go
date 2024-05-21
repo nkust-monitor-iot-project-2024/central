@@ -9,6 +9,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/movement"
 )
@@ -26,15 +27,21 @@ func (mc *MovementCreate) SetPicture(b []byte) *MovementCreate {
 	return mc
 }
 
+// SetID sets the "id" field.
+func (mc *MovementCreate) SetID(u uuid.UUID) *MovementCreate {
+	mc.mutation.SetID(u)
+	return mc
+}
+
 // AddEventIDIDs adds the "event_id" edge to the Event entity by IDs.
-func (mc *MovementCreate) AddEventIDIDs(ids ...int) *MovementCreate {
+func (mc *MovementCreate) AddEventIDIDs(ids ...uuid.UUID) *MovementCreate {
 	mc.mutation.AddEventIDIDs(ids...)
 	return mc
 }
 
 // AddEventID adds the "event_id" edges to the Event entity.
 func (mc *MovementCreate) AddEventID(e ...*Event) *MovementCreate {
-	ids := make([]int, len(e))
+	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
@@ -78,6 +85,9 @@ func (mc *MovementCreate) check() error {
 	if _, ok := mc.mutation.Picture(); !ok {
 		return &ValidationError{Name: "picture", err: errors.New(`ent: missing required field "Movement.picture"`)}
 	}
+	if len(mc.mutation.EventIDIDs()) == 0 {
+		return &ValidationError{Name: "event_id", err: errors.New(`ent: missing required edge "Movement.event_id"`)}
+	}
 	return nil
 }
 
@@ -92,8 +102,13 @@ func (mc *MovementCreate) sqlSave(ctx context.Context) (*Movement, error) {
 		}
 		return nil, err
 	}
-	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
+	if _spec.ID.Value != nil {
+		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
+			_node.ID = *id
+		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+			return nil, err
+		}
+	}
 	mc.mutation.id = &_node.ID
 	mc.mutation.done = true
 	return _node, nil
@@ -102,21 +117,25 @@ func (mc *MovementCreate) sqlSave(ctx context.Context) (*Movement, error) {
 func (mc *MovementCreate) createSpec() (*Movement, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Movement{config: mc.config}
-		_spec = sqlgraph.NewCreateSpec(movement.Table, sqlgraph.NewFieldSpec(movement.FieldID, field.TypeInt))
+		_spec = sqlgraph.NewCreateSpec(movement.Table, sqlgraph.NewFieldSpec(movement.FieldID, field.TypeUUID))
 	)
+	if id, ok := mc.mutation.ID(); ok {
+		_node.ID = id
+		_spec.ID.Value = &id
+	}
 	if value, ok := mc.mutation.Picture(); ok {
 		_spec.SetField(movement.FieldPicture, field.TypeBytes, value)
 		_node.Picture = value
 	}
 	if nodes := mc.mutation.EventIDIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   movement.EventIDTable,
-			Columns: []string{movement.EventIDColumn},
+			Columns: movement.EventIDPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -171,10 +190,6 @@ func (mcb *MovementCreateBulk) Save(ctx context.Context) ([]*Movement, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
-				if specs[i].ID.Value != nil {
-					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int(id)
-				}
 				mutation.done = true
 				return nodes[i], nil
 			})

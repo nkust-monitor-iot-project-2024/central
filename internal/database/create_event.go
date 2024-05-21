@@ -42,7 +42,7 @@ func (d *database) CreateMovementEvent(ctx context.Context, req *CreateMovementE
 		return nil, err
 	}
 
-	event, err := d.Events().InsertOne(ctx, models.Event{
+	event, err := d.Events().InsertOne(ctx, models.Metadata{
 		ID:       eventID,
 		Metadata: req.Metadata,
 		Type:     models.EventTypeMovement,
@@ -111,7 +111,7 @@ func (d *database) CreateInvadedEvent(ctx context.Context, req *CreateInvadedEve
 		})
 	}
 
-	event, err := d.Events().InsertOne(ctx, models.Event{
+	event, err := d.Events().InsertOne(ctx, models.Metadata{
 		ID:       eventID,
 		Metadata: req.Metadata,
 		Type:     models.EventTypeInvaded,

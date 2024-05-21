@@ -5,51 +5,52 @@ package movement
 import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/predicate"
 )
 
 // ID filters vertices based on their ID field.
-func ID(id int) predicate.Movement {
+func ID(id uuid.UUID) predicate.Movement {
 	return predicate.Movement(sql.FieldEQ(FieldID, id))
 }
 
 // IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id int) predicate.Movement {
+func IDEQ(id uuid.UUID) predicate.Movement {
 	return predicate.Movement(sql.FieldEQ(FieldID, id))
 }
 
 // IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id int) predicate.Movement {
+func IDNEQ(id uuid.UUID) predicate.Movement {
 	return predicate.Movement(sql.FieldNEQ(FieldID, id))
 }
 
 // IDIn applies the In predicate on the ID field.
-func IDIn(ids ...int) predicate.Movement {
+func IDIn(ids ...uuid.UUID) predicate.Movement {
 	return predicate.Movement(sql.FieldIn(FieldID, ids...))
 }
 
 // IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...int) predicate.Movement {
+func IDNotIn(ids ...uuid.UUID) predicate.Movement {
 	return predicate.Movement(sql.FieldNotIn(FieldID, ids...))
 }
 
 // IDGT applies the GT predicate on the ID field.
-func IDGT(id int) predicate.Movement {
+func IDGT(id uuid.UUID) predicate.Movement {
 	return predicate.Movement(sql.FieldGT(FieldID, id))
 }
 
 // IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id int) predicate.Movement {
+func IDGTE(id uuid.UUID) predicate.Movement {
 	return predicate.Movement(sql.FieldGTE(FieldID, id))
 }
 
 // IDLT applies the LT predicate on the ID field.
-func IDLT(id int) predicate.Movement {
+func IDLT(id uuid.UUID) predicate.Movement {
 	return predicate.Movement(sql.FieldLT(FieldID, id))
 }
 
 // IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id int) predicate.Movement {
+func IDLTE(id uuid.UUID) predicate.Movement {
 	return predicate.Movement(sql.FieldLTE(FieldID, id))
 }
 
@@ -103,7 +104,7 @@ func HasEventID() predicate.Movement {
 	return predicate.Movement(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, EventIDTable, EventIDColumn),
+			sqlgraph.Edge(sqlgraph.M2M, true, EventIDTable, EventIDPrimaryKey...),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})

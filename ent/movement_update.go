@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/movement"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/predicate"
@@ -35,14 +36,14 @@ func (mu *MovementUpdate) SetPicture(b []byte) *MovementUpdate {
 }
 
 // AddEventIDIDs adds the "event_id" edge to the Event entity by IDs.
-func (mu *MovementUpdate) AddEventIDIDs(ids ...int) *MovementUpdate {
+func (mu *MovementUpdate) AddEventIDIDs(ids ...uuid.UUID) *MovementUpdate {
 	mu.mutation.AddEventIDIDs(ids...)
 	return mu
 }
 
 // AddEventID adds the "event_id" edges to the Event entity.
 func (mu *MovementUpdate) AddEventID(e ...*Event) *MovementUpdate {
-	ids := make([]int, len(e))
+	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
@@ -61,14 +62,14 @@ func (mu *MovementUpdate) ClearEventID() *MovementUpdate {
 }
 
 // RemoveEventIDIDs removes the "event_id" edge to Event entities by IDs.
-func (mu *MovementUpdate) RemoveEventIDIDs(ids ...int) *MovementUpdate {
+func (mu *MovementUpdate) RemoveEventIDIDs(ids ...uuid.UUID) *MovementUpdate {
 	mu.mutation.RemoveEventIDIDs(ids...)
 	return mu
 }
 
 // RemoveEventID removes "event_id" edges to Event entities.
 func (mu *MovementUpdate) RemoveEventID(e ...*Event) *MovementUpdate {
-	ids := make([]int, len(e))
+	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
@@ -103,7 +104,7 @@ func (mu *MovementUpdate) ExecX(ctx context.Context) {
 }
 
 func (mu *MovementUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	_spec := sqlgraph.NewUpdateSpec(movement.Table, movement.Columns, sqlgraph.NewFieldSpec(movement.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewUpdateSpec(movement.Table, movement.Columns, sqlgraph.NewFieldSpec(movement.FieldID, field.TypeUUID))
 	if ps := mu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -116,26 +117,26 @@ func (mu *MovementUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if mu.mutation.EventIDCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   movement.EventIDTable,
-			Columns: []string{movement.EventIDColumn},
+			Columns: movement.EventIDPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := mu.mutation.RemovedEventIDIDs(); len(nodes) > 0 && !mu.mutation.EventIDCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   movement.EventIDTable,
-			Columns: []string{movement.EventIDColumn},
+			Columns: movement.EventIDPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -145,13 +146,13 @@ func (mu *MovementUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if nodes := mu.mutation.EventIDIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   movement.EventIDTable,
-			Columns: []string{movement.EventIDColumn},
+			Columns: movement.EventIDPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -186,14 +187,14 @@ func (muo *MovementUpdateOne) SetPicture(b []byte) *MovementUpdateOne {
 }
 
 // AddEventIDIDs adds the "event_id" edge to the Event entity by IDs.
-func (muo *MovementUpdateOne) AddEventIDIDs(ids ...int) *MovementUpdateOne {
+func (muo *MovementUpdateOne) AddEventIDIDs(ids ...uuid.UUID) *MovementUpdateOne {
 	muo.mutation.AddEventIDIDs(ids...)
 	return muo
 }
 
 // AddEventID adds the "event_id" edges to the Event entity.
 func (muo *MovementUpdateOne) AddEventID(e ...*Event) *MovementUpdateOne {
-	ids := make([]int, len(e))
+	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
@@ -212,14 +213,14 @@ func (muo *MovementUpdateOne) ClearEventID() *MovementUpdateOne {
 }
 
 // RemoveEventIDIDs removes the "event_id" edge to Event entities by IDs.
-func (muo *MovementUpdateOne) RemoveEventIDIDs(ids ...int) *MovementUpdateOne {
+func (muo *MovementUpdateOne) RemoveEventIDIDs(ids ...uuid.UUID) *MovementUpdateOne {
 	muo.mutation.RemoveEventIDIDs(ids...)
 	return muo
 }
 
 // RemoveEventID removes "event_id" edges to Event entities.
 func (muo *MovementUpdateOne) RemoveEventID(e ...*Event) *MovementUpdateOne {
-	ids := make([]int, len(e))
+	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
@@ -267,7 +268,7 @@ func (muo *MovementUpdateOne) ExecX(ctx context.Context) {
 }
 
 func (muo *MovementUpdateOne) sqlSave(ctx context.Context) (_node *Movement, err error) {
-	_spec := sqlgraph.NewUpdateSpec(movement.Table, movement.Columns, sqlgraph.NewFieldSpec(movement.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewUpdateSpec(movement.Table, movement.Columns, sqlgraph.NewFieldSpec(movement.FieldID, field.TypeUUID))
 	id, ok := muo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Movement.id" for update`)}
@@ -297,26 +298,26 @@ func (muo *MovementUpdateOne) sqlSave(ctx context.Context) (_node *Movement, err
 	}
 	if muo.mutation.EventIDCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   movement.EventIDTable,
-			Columns: []string{movement.EventIDColumn},
+			Columns: movement.EventIDPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := muo.mutation.RemovedEventIDIDs(); len(nodes) > 0 && !muo.mutation.EventIDCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   movement.EventIDTable,
-			Columns: []string{movement.EventIDColumn},
+			Columns: movement.EventIDPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -326,13 +327,13 @@ func (muo *MovementUpdateOne) sqlSave(ctx context.Context) (_node *Movement, err
 	}
 	if nodes := muo.mutation.EventIDIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   movement.EventIDTable,
-			Columns: []string{movement.EventIDColumn},
+			Columns: movement.EventIDPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -14,40 +15,48 @@ const (
 	Label = "event"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldEventID holds the string denoting the event_id field in the database.
-	FieldEventID = "event_id"
 	// FieldType holds the string denoting the type field in the database.
 	FieldType = "type"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// EdgeInvaders holds the string denoting the invaders edge name in mutations.
+	EdgeInvaders = "invaders"
+	// EdgeMovements holds the string denoting the movements edge name in mutations.
+	EdgeMovements = "movements"
 	// Table holds the table name of the event in the database.
 	Table = "events"
+	// InvadersTable is the table that holds the invaders relation/edge. The primary key declared below.
+	InvadersTable = "event_invaders"
+	// InvadersInverseTable is the table name for the Invader entity.
+	// It exists in this package in order to avoid circular dependency with the "invader" package.
+	InvadersInverseTable = "invaders"
+	// MovementsTable is the table that holds the movements relation/edge. The primary key declared below.
+	MovementsTable = "event_movements"
+	// MovementsInverseTable is the table name for the Movement entity.
+	// It exists in this package in order to avoid circular dependency with the "movement" package.
+	MovementsInverseTable = "movements"
 )
 
 // Columns holds all SQL columns for event fields.
 var Columns = []string{
 	FieldID,
-	FieldEventID,
 	FieldType,
 	FieldCreatedAt,
 }
 
-// ForeignKeys holds the SQL foreign-keys that are owned by the "events"
-// table and are not defined as standalone fields in the schema.
-var ForeignKeys = []string{
-	"invader_event_id",
-	"movement_event_id",
-}
+var (
+	// InvadersPrimaryKey and InvadersColumn2 are the table columns denoting the
+	// primary key for the invaders relation (M2M).
+	InvadersPrimaryKey = []string{"event_id", "invader_id"}
+	// MovementsPrimaryKey and MovementsColumn2 are the table columns denoting the
+	// primary key for the movements relation (M2M).
+	MovementsPrimaryKey = []string{"event_id", "movement_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
-			return true
-		}
-	}
-	for i := range ForeignKeys {
-		if column == ForeignKeys[i] {
 			return true
 		}
 	}
@@ -90,11 +99,6 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
 }
 
-// ByEventID orders the results by the event_id field.
-func ByEventID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldEventID, opts...).ToFunc()
-}
-
 // ByType orders the results by the type field.
 func ByType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldType, opts...).ToFunc()
@@ -103,4 +107,46 @@ func ByType(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByInvadersCount orders the results by invaders count.
+func ByInvadersCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newInvadersStep(), opts...)
+	}
+}
+
+// ByInvaders orders the results by invaders terms.
+func ByInvaders(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newInvadersStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByMovementsCount orders the results by movements count.
+func ByMovementsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newMovementsStep(), opts...)
+	}
+}
+
+// ByMovements orders the results by movements terms.
+func ByMovements(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newMovementsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newInvadersStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(InvadersInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, InvadersTable, InvadersPrimaryKey...),
+	)
+}
+func newMovementsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(MovementsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, MovementsTable, MovementsPrimaryKey...),
+	)
 }

@@ -8,6 +8,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/movement"
 )
 
@@ -15,7 +16,7 @@ import (
 type Movement struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int `json:"id,omitempty"`
+	ID uuid.UUID `json:"id,omitempty"`
 	// Picture holds the value of the "picture" field.
 	Picture []byte `json:"picture,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -50,7 +51,7 @@ func (*Movement) scanValues(columns []string) ([]any, error) {
 		case movement.FieldPicture:
 			values[i] = new([]byte)
 		case movement.FieldID:
-			values[i] = new(sql.NullInt64)
+			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -67,11 +68,11 @@ func (m *Movement) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case movement.FieldID:
-			value, ok := values[i].(*sql.NullInt64)
-			if !ok {
-				return fmt.Errorf("unexpected type %T for field id", value)
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field id", values[i])
+			} else if value != nil {
+				m.ID = *value
 			}
-			m.ID = int(value.Int64)
 		case movement.FieldPicture:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field picture", values[i])

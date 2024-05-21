@@ -9,6 +9,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/invader"
 )
@@ -32,15 +33,21 @@ func (ic *InvaderCreate) SetConfidence(f float64) *InvaderCreate {
 	return ic
 }
 
+// SetID sets the "id" field.
+func (ic *InvaderCreate) SetID(u uuid.UUID) *InvaderCreate {
+	ic.mutation.SetID(u)
+	return ic
+}
+
 // AddEventIDIDs adds the "event_id" edge to the Event entity by IDs.
-func (ic *InvaderCreate) AddEventIDIDs(ids ...int) *InvaderCreate {
+func (ic *InvaderCreate) AddEventIDIDs(ids ...uuid.UUID) *InvaderCreate {
 	ic.mutation.AddEventIDIDs(ids...)
 	return ic
 }
 
 // AddEventID adds the "event_id" edges to the Event entity.
 func (ic *InvaderCreate) AddEventID(e ...*Event) *InvaderCreate {
-	ids := make([]int, len(e))
+	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
@@ -87,6 +94,9 @@ func (ic *InvaderCreate) check() error {
 	if _, ok := ic.mutation.Confidence(); !ok {
 		return &ValidationError{Name: "confidence", err: errors.New(`ent: missing required field "Invader.confidence"`)}
 	}
+	if len(ic.mutation.EventIDIDs()) == 0 {
+		return &ValidationError{Name: "event_id", err: errors.New(`ent: missing required edge "Invader.event_id"`)}
+	}
 	return nil
 }
 
@@ -101,8 +111,13 @@ func (ic *InvaderCreate) sqlSave(ctx context.Context) (*Invader, error) {
 		}
 		return nil, err
 	}
-	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
+	if _spec.ID.Value != nil {
+		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
+			_node.ID = *id
+		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+			return nil, err
+		}
+	}
 	ic.mutation.id = &_node.ID
 	ic.mutation.done = true
 	return _node, nil
@@ -111,8 +126,12 @@ func (ic *InvaderCreate) sqlSave(ctx context.Context) (*Invader, error) {
 func (ic *InvaderCreate) createSpec() (*Invader, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Invader{config: ic.config}
-		_spec = sqlgraph.NewCreateSpec(invader.Table, sqlgraph.NewFieldSpec(invader.FieldID, field.TypeInt))
+		_spec = sqlgraph.NewCreateSpec(invader.Table, sqlgraph.NewFieldSpec(invader.FieldID, field.TypeUUID))
 	)
+	if id, ok := ic.mutation.ID(); ok {
+		_node.ID = id
+		_spec.ID.Value = &id
+	}
 	if value, ok := ic.mutation.Picture(); ok {
 		_spec.SetField(invader.FieldPicture, field.TypeBytes, value)
 		_node.Picture = value
@@ -123,13 +142,13 @@ func (ic *InvaderCreate) createSpec() (*Invader, *sqlgraph.CreateSpec) {
 	}
 	if nodes := ic.mutation.EventIDIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   invader.EventIDTable,
-			Columns: []string{invader.EventIDColumn},
+			Columns: invader.EventIDPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -184,10 +203,6 @@ func (icb *InvaderCreateBulk) Save(ctx context.Context) ([]*Invader, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
-				if specs[i].ID.Value != nil {
-					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int(id)
-				}
 				mutation.done = true
 				return nodes[i], nil
 			})
