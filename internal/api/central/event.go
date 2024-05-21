@@ -4,8 +4,9 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext"
+	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/database"
-	"github.com/nkust-monitor-iot-project-2024/central/internal/slogext"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/centralpb"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
@@ -18,7 +19,7 @@ func (s *service) TriggerEvent(ctx context.Context, request *centralpb.TriggerEv
 	switch payload := request.Payload.Event.(type) {
 	case *centralpb.TriggerEventPayload_EventInvaded:
 		event := payload.EventInvaded
-		s.logger.InfoContext(ctx, "received event: invaded", slog.String("type", "invaded"), slogext.EventMetadataPb(event.GetMetadata()))
+		s.logger.InfoContext(ctx, "received event: invaded", slog.String("type", "invaded"), attributext.EventMetadataPb(event.GetMetadata()))
 
 		go func() {
 			ctx := context.WithoutCancel(ctx)
@@ -33,13 +34,13 @@ func (s *service) TriggerEvent(ctx context.Context, request *centralpb.TriggerEv
 				}),
 			})
 			if err != nil {
-				s.logger.ErrorContext(ctx, "failed to create invaded event", slogext.Error(err), slogext.EventMetadataPb(event.GetMetadata()))
+				s.logger.ErrorContext(ctx, "failed to create invaded event", slogext.Error(err), attributext.EventMetadataPb(event.GetMetadata()))
 			}
 		}()
 
 	case *centralpb.TriggerEventPayload_EventMovement:
 		event := payload.EventMovement
-		s.logger.InfoContext(ctx, "received event: movement", slog.String("type", "movement"), slogext.EventMetadataPb(event.GetMetadata()))
+		s.logger.InfoContext(ctx, "received event: movement", slog.String("type", "movement"), attributext.EventMetadataPb(event.GetMetadata()))
 
 		go func() {
 			ctx := context.WithoutCancel(ctx)
@@ -49,7 +50,7 @@ func (s *service) TriggerEvent(ctx context.Context, request *centralpb.TriggerEv
 				MovementPicture: event.GetPicture(),
 			})
 			if err != nil {
-				s.logger.ErrorContext(ctx, "failed to create movement event", slogext.Error(err), slogext.EventMetadataPb(event.GetMetadata()))
+				s.logger.ErrorContext(ctx, "failed to create movement event", slogext.Error(err), attributext.EventMetadataPb(event.GetMetadata()))
 			}
 		}()
 	}

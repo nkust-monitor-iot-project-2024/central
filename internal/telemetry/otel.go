@@ -1,6 +1,9 @@
 package telemetry
 
-import "github.com/nkust-monitor-iot-project-2024/central/internal/utils"
+import (
+	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
+	"go.opentelemetry.io/otel/sdk/resource"
+)
 
 // OpenTelemetry module.
 //
@@ -19,7 +22,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
@@ -37,7 +39,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
-func setupOTelSDK(ctx context.Context, config utils.Config) (shutdown func(context.Context) error, err error) {
+func SetupOTelSDK(ctx context.Context, config utils.Config, resource *resource.Resource) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error
 
 	// shutdown calls cleanup functions registered via shutdownFuncs.
@@ -62,7 +64,7 @@ func setupOTelSDK(ctx context.Context, config utils.Config) (shutdown func(conte
 	otel.SetTextMapPropagator(prop)
 
 	// Set up trace provider.
-	tracerProvider, err := newTraceProvider(ctx, config)
+	tracerProvider, err := newTraceProvider(ctx, config, resource)
 	if err != nil {
 		handleErr(fmt.Errorf("create trace provider: %w", err))
 		return
@@ -71,7 +73,7 @@ func setupOTelSDK(ctx context.Context, config utils.Config) (shutdown func(conte
 	otel.SetTracerProvider(tracerProvider)
 
 	// Set up meter provider.
-	meterProvider, err := newMeterProvider(ctx, config)
+	meterProvider, err := newMeterProvider(ctx, config, resource)
 	if err != nil {
 		handleErr(fmt.Errorf("create meter provider: %w", err))
 		return
@@ -80,7 +82,7 @@ func setupOTelSDK(ctx context.Context, config utils.Config) (shutdown func(conte
 	otel.SetMeterProvider(meterProvider)
 
 	// Set up logger provider.
-	loggerProvider, err := newLoggerProvider(ctx, config)
+	loggerProvider, err := newLoggerProvider(ctx, config, resource)
 	if err != nil {
 		handleErr(fmt.Errorf("create logger provider: %w", err))
 		return
@@ -98,7 +100,7 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
-func newTraceProvider(ctx context.Context, config utils.Config) (*trace.TracerProvider, error) {
+func newTraceProvider(ctx context.Context, config utils.Config, serviceResource *resource.Resource) (*trace.TracerProvider, error) {
 	traceExporter, err := func() (trace.SpanExporter, error) {
 		endpointConfig := config.Cut("telemetry.endpoint")
 
@@ -134,12 +136,13 @@ func newTraceProvider(ctx context.Context, config utils.Config) (*trace.TracerPr
 	}
 
 	traceProvider := trace.NewTracerProvider(
+		trace.WithResource(serviceResource),
 		trace.WithBatcher(traceExporter),
 	)
 	return traceProvider, nil
 }
 
-func newMeterProvider(ctx context.Context, config utils.Config) (*metric.MeterProvider, error) {
+func newMeterProvider(ctx context.Context, config utils.Config, serviceResource *resource.Resource) (*metric.MeterProvider, error) {
 	metricExporter, err := func() (metric.Exporter, error) {
 		endpointConfig := config.Cut("telemetry.endpoint")
 
@@ -175,14 +178,13 @@ func newMeterProvider(ctx context.Context, config utils.Config) (*metric.MeterPr
 	}
 
 	meterProvider := metric.NewMeterProvider(
-		metric.WithReader(metric.NewPeriodicReader(metricExporter,
-			// Default is 1m. Set to 3s for demonstrative purposes.
-			metric.WithInterval(3*time.Second))),
+		metric.WithResource(serviceResource),
+		metric.WithReader(metric.NewPeriodicReader(metricExporter)),
 	)
 	return meterProvider, nil
 }
 
-func newLoggerProvider(ctx context.Context, config utils.Config) (*log.LoggerProvider, error) {
+func newLoggerProvider(ctx context.Context, config utils.Config, serviceResource *resource.Resource) (*log.LoggerProvider, error) {
 	logExporter, err := func() (log.Exporter, error) {
 		endpointConfig := config.Cut("telemetry.endpoint")
 
@@ -208,6 +210,7 @@ func newLoggerProvider(ctx context.Context, config utils.Config) (*log.LoggerPro
 	}
 
 	loggerProvider := log.NewLoggerProvider(
+		log.WithResource(serviceResource),
 		log.WithProcessor(log.NewBatchProcessor(logExporter)),
 	)
 	return loggerProvider, nil

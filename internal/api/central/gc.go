@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/database"
-	"github.com/nkust-monitor-iot-project-2024/central/internal/slogext"
 	"go.mongodb.org/mongo-driver/bson"
 )
 

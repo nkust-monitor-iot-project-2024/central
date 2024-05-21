@@ -5,45 +5,14 @@ option go_package = "github.com/nkust-monitor-iot-project-2024/central/protos/ev
 
 import "google/protobuf/timestamp.proto";
 
-message Event {
-    string id = 1;
-    google.protobuf.Timestamp created_at = 2;
-
-    oneof event {
-        eventpb.EventInvaded event_invaded = 10;
-        eventpb.EventMovement event_movement = 11;
-    }
+message Metadata {
+    string event_id = 1;
+    string device_id = 2;
+    google.protobuf.Timestamp emitted_at = 3;
 }
 
-message EventMetadata {
-    // The device ID that the event is associated with.
-    string device_id = 1;
-
-    // When the event was created.
-    google.protobuf.Timestamp timestamp = 2;
-}
-
-// An event that is emitted when an invader is detected.
-message EventInvaded {
-    EventMetadata metadata = 1;
-
-    repeated Invader invaders = 2;
-}
-
-message Invader {
-    reserved 1;
-
-    // The picture of this invader.
-    bytes picture = 2;
-
-    // The confidence of the invader. [0-1]
-    float confidence = 3;
-}
-
-// An event that is emitted when a movement is detected.
-message EventMovement {
-    EventMetadata metadata = 1;
-
-    // The picture of the room.
+message MovementEventMessage {
+    Metadata metadata = 1;
     bytes picture = 2;
 }
+
