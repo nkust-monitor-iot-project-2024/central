@@ -19,6 +19,7 @@ func (Event) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.Must(uuid.NewV7())),
 		field.Enum("type").Values("invaded", "movement", "move"),
+		field.String("device_id"),
 		field.Time("created_at").Default(time.Now),
 	}
 }

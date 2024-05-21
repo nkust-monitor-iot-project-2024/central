@@ -12,6 +12,7 @@ var (
 	EventsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "type", Type: field.TypeEnum, Enums: []string{"invaded", "movement", "move"}},
+		{Name: "device_id", Type: field.TypeString},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// EventsTable holds the schema information for the "events" table.

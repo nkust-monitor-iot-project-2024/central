@@ -20,6 +20,8 @@ type Event struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// Type holds the value of the "type" field.
 	Type event.Type `json:"type,omitempty"`
+	// DeviceID holds the value of the "device_id" field.
+	DeviceID string `json:"device_id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -73,7 +75,7 @@ func (*Event) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case event.FieldType:
+		case event.FieldType, event.FieldDeviceID:
 			values[i] = new(sql.NullString)
 		case event.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -105,6 +107,12 @@ func (e *Event) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field type", values[i])
 			} else if value.Valid {
 				e.Type = event.Type(value.String)
+			}
+		case event.FieldDeviceID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field device_id", values[i])
+			} else if value.Valid {
+				e.DeviceID = value.String
 			}
 		case event.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -165,6 +173,9 @@ func (e *Event) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", e.ID))
 	builder.WriteString("type=")
 	builder.WriteString(fmt.Sprintf("%v", e.Type))
+	builder.WriteString(", ")
+	builder.WriteString("device_id=")
+	builder.WriteString(e.DeviceID)
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(e.CreatedAt.Format(time.ANSIC))

@@ -17,6 +17,8 @@ const (
 	FieldID = "id"
 	// FieldType holds the string denoting the type field in the database.
 	FieldType = "type"
+	// FieldDeviceID holds the string denoting the device_id field in the database.
+	FieldDeviceID = "device_id"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeInvaders holds the string denoting the invaders edge name in mutations.
@@ -48,6 +50,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldType,
+	FieldDeviceID,
 	FieldCreatedAt,
 }
 
@@ -113,6 +116,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByType orders the results by the type field.
 func ByType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldType, opts...).ToFunc()
+}
+
+// ByDeviceID orders the results by the device_id field.
+func ByDeviceID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeviceID, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

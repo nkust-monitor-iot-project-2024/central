@@ -46,6 +46,20 @@ func (eu *EventUpdate) SetNillableType(e *event.Type) *EventUpdate {
 	return eu
 }
 
+// SetDeviceID sets the "device_id" field.
+func (eu *EventUpdate) SetDeviceID(s string) *EventUpdate {
+	eu.mutation.SetDeviceID(s)
+	return eu
+}
+
+// SetNillableDeviceID sets the "device_id" field if the given value is not nil.
+func (eu *EventUpdate) SetNillableDeviceID(s *string) *EventUpdate {
+	if s != nil {
+		eu.SetDeviceID(*s)
+	}
+	return eu
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (eu *EventUpdate) SetCreatedAt(t time.Time) *EventUpdate {
 	eu.mutation.SetCreatedAt(t)
@@ -225,6 +239,9 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := eu.mutation.GetType(); ok {
 		_spec.SetField(event.FieldType, field.TypeEnum, value)
 	}
+	if value, ok := eu.mutation.DeviceID(); ok {
+		_spec.SetField(event.FieldDeviceID, field.TypeString, value)
+	}
 	if value, ok := eu.mutation.CreatedAt(); ok {
 		_spec.SetField(event.FieldCreatedAt, field.TypeTime, value)
 	}
@@ -393,6 +410,20 @@ func (euo *EventUpdateOne) SetType(e event.Type) *EventUpdateOne {
 func (euo *EventUpdateOne) SetNillableType(e *event.Type) *EventUpdateOne {
 	if e != nil {
 		euo.SetType(*e)
+	}
+	return euo
+}
+
+// SetDeviceID sets the "device_id" field.
+func (euo *EventUpdateOne) SetDeviceID(s string) *EventUpdateOne {
+	euo.mutation.SetDeviceID(s)
+	return euo
+}
+
+// SetNillableDeviceID sets the "device_id" field if the given value is not nil.
+func (euo *EventUpdateOne) SetNillableDeviceID(s *string) *EventUpdateOne {
+	if s != nil {
+		euo.SetDeviceID(*s)
 	}
 	return euo
 }
@@ -605,6 +636,9 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 	}
 	if value, ok := euo.mutation.GetType(); ok {
 		_spec.SetField(event.FieldType, field.TypeEnum, value)
+	}
+	if value, ok := euo.mutation.DeviceID(); ok {
+		_spec.SetField(event.FieldDeviceID, field.TypeString, value)
 	}
 	if value, ok := euo.mutation.CreatedAt(); ok {
 		_spec.SetField(event.FieldCreatedAt, field.TypeTime, value)

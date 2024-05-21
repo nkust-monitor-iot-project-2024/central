@@ -79,6 +79,7 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 func (r *eventRepositoryEnt) transformEvent(ctx context.Context, eventDao *ent.Event, brief bool) (Event, error) {
 	metadata := Metadata{
 		EventID:   eventDao.ID,
+		DeviceID:  eventDao.DeviceID,
 		EmittedAt: eventDao.CreatedAt,
 	}
 

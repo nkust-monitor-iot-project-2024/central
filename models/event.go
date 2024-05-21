@@ -9,6 +9,7 @@ import (
 // Event represents an event.
 type Event interface {
 	GetEventID() uuid.UUID
+	GetDeviceID() string
 	GetEmittedAt() time.Time
 	GetType() EventType
 }
@@ -68,11 +69,16 @@ func (m *MoveEvent) GetCycle() float64 {
 // Metadata represents an event.
 type Metadata struct {
 	EventID   uuid.UUID `json:"event_id"`
+	DeviceID  string    `json:"device_id"`
 	EmittedAt time.Time `json:"emitted_at"`
 }
 
 func (e *Metadata) GetEventID() uuid.UUID {
 	return e.EventID
+}
+
+func (e *Metadata) GetDeviceID() string {
+	return e.DeviceID
 }
 
 func (e *Metadata) GetEmittedAt() time.Time {

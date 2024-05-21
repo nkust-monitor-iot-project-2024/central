@@ -30,6 +30,12 @@ func (ec *EventCreate) SetType(e event.Type) *EventCreate {
 	return ec
 }
 
+// SetDeviceID sets the "device_id" field.
+func (ec *EventCreate) SetDeviceID(s string) *EventCreate {
+	ec.mutation.SetDeviceID(s)
+	return ec
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (ec *EventCreate) SetCreatedAt(t time.Time) *EventCreate {
 	ec.mutation.SetCreatedAt(t)
@@ -146,6 +152,9 @@ func (ec *EventCreate) check() error {
 			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Event.type": %w`, err)}
 		}
 	}
+	if _, ok := ec.mutation.DeviceID(); !ok {
+		return &ValidationError{Name: "device_id", err: errors.New(`ent: missing required field "Event.device_id"`)}
+	}
 	if _, ok := ec.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Event.created_at"`)}
 	}
@@ -187,6 +196,10 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 	if value, ok := ec.mutation.GetType(); ok {
 		_spec.SetField(event.FieldType, field.TypeEnum, value)
 		_node.Type = value
+	}
+	if value, ok := ec.mutation.DeviceID(); ok {
+		_spec.SetField(event.FieldDeviceID, field.TypeString, value)
+		_node.DeviceID = value
 	}
 	if value, ok := ec.mutation.CreatedAt(); ok {
 		_spec.SetField(event.FieldCreatedAt, field.TypeTime, value)
