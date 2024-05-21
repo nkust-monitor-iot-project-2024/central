@@ -16,6 +16,8 @@ type Tx struct {
 	Event *EventClient
 	// Invader is the client for interacting with the Invader builders.
 	Invader *InvaderClient
+	// Move is the client for interacting with the Move builders.
+	Move *MoveClient
 	// Movement is the client for interacting with the Movement builders.
 	Movement *MovementClient
 
@@ -151,6 +153,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Event = NewEventClient(tx.config)
 	tx.Invader = NewInvaderClient(tx.config)
+	tx.Move = NewMoveClient(tx.config)
 	tx.Movement = NewMovementClient(tx.config)
 }
 

@@ -15,7 +15,7 @@ type Invader struct {
 // Fields of the Invader.
 func (Invader) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.Must(uuid.NewUUID())),
+		field.UUID("id", uuid.Must(uuid.NewV7())),
 		field.Bytes("picture"),
 		field.Float("confidence"),
 	}

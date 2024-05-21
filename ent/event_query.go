@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/invader"
+	"github.com/nkust-monitor-iot-project-2024/central/ent/move"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/movement"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/predicate"
 )
@@ -27,6 +28,7 @@ type EventQuery struct {
 	predicates    []predicate.Event
 	withInvaders  *InvaderQuery
 	withMovements *MovementQuery
+	withMoves     *MoveQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -100,6 +102,28 @@ func (eq *EventQuery) QueryMovements() *MovementQuery {
 			sqlgraph.From(event.Table, event.FieldID, selector),
 			sqlgraph.To(movement.Table, movement.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, event.MovementsTable, event.MovementsPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(eq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryMoves chains the current query on the "moves" edge.
+func (eq *EventQuery) QueryMoves() *MoveQuery {
+	query := (&MoveClient{config: eq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := eq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := eq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(event.Table, event.FieldID, selector),
+			sqlgraph.To(move.Table, move.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, event.MovesTable, event.MovesPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(eq.driver.Dialect(), step)
 		return fromU, nil
@@ -301,6 +325,7 @@ func (eq *EventQuery) Clone() *EventQuery {
 		predicates:    append([]predicate.Event{}, eq.predicates...),
 		withInvaders:  eq.withInvaders.Clone(),
 		withMovements: eq.withMovements.Clone(),
+		withMoves:     eq.withMoves.Clone(),
 		// clone intermediate query.
 		sql:  eq.sql.Clone(),
 		path: eq.path,
@@ -326,6 +351,17 @@ func (eq *EventQuery) WithMovements(opts ...func(*MovementQuery)) *EventQuery {
 		opt(query)
 	}
 	eq.withMovements = query
+	return eq
+}
+
+// WithMoves tells the query-builder to eager-load the nodes that are connected to
+// the "moves" edge. The optional arguments are used to configure the query builder of the edge.
+func (eq *EventQuery) WithMoves(opts ...func(*MoveQuery)) *EventQuery {
+	query := (&MoveClient{config: eq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	eq.withMoves = query
 	return eq
 }
 
@@ -407,9 +443,10 @@ func (eq *EventQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Event,
 	var (
 		nodes       = []*Event{}
 		_spec       = eq.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			eq.withInvaders != nil,
 			eq.withMovements != nil,
+			eq.withMoves != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -441,6 +478,13 @@ func (eq *EventQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Event,
 		if err := eq.loadMovements(ctx, query, nodes,
 			func(n *Event) { n.Edges.Movements = []*Movement{} },
 			func(n *Event, e *Movement) { n.Edges.Movements = append(n.Edges.Movements, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := eq.withMoves; query != nil {
+		if err := eq.loadMoves(ctx, query, nodes,
+			func(n *Event) { n.Edges.Moves = []*Move{} },
+			func(n *Event, e *Move) { n.Edges.Moves = append(n.Edges.Moves, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -562,6 +606,67 @@ func (eq *EventQuery) loadMovements(ctx context.Context, query *MovementQuery, n
 		nodes, ok := nids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected "movements" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
+}
+func (eq *EventQuery) loadMoves(ctx context.Context, query *MoveQuery, nodes []*Event, init func(*Event), assign func(*Event, *Move)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[uuid.UUID]*Event)
+	nids := make(map[uuid.UUID]map[*Event]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(event.MovesTable)
+		s.Join(joinT).On(s.C(move.FieldID), joinT.C(event.MovesPrimaryKey[1]))
+		s.Where(sql.InValues(joinT.C(event.MovesPrimaryKey[0]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(event.MovesPrimaryKey[0]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(uuid.UUID)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := *values[0].(*uuid.UUID)
+				inValue := *values[1].(*uuid.UUID)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*Event]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Move](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "moves" node returned %v`, n.ID)
 		}
 		for kn := range nodes {
 			assign(kn, n)

@@ -34,9 +34,11 @@ type EventEdges struct {
 	Invaders []*Invader `json:"invaders,omitempty"`
 	// Movements holds the value of the movements edge.
 	Movements []*Movement `json:"movements,omitempty"`
+	// Moves holds the value of the moves edge.
+	Moves []*Move `json:"moves,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // InvadersOrErr returns the Invaders value or an error if the edge
@@ -55,6 +57,15 @@ func (e EventEdges) MovementsOrErr() ([]*Movement, error) {
 		return e.Movements, nil
 	}
 	return nil, &NotLoadedError{edge: "movements"}
+}
+
+// MovesOrErr returns the Moves value or an error if the edge
+// was not loaded in eager-loading.
+func (e EventEdges) MovesOrErr() ([]*Move, error) {
+	if e.loadedTypes[2] {
+		return e.Moves, nil
+	}
+	return nil, &NotLoadedError{edge: "moves"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -122,6 +133,11 @@ func (e *Event) QueryInvaders() *InvaderQuery {
 // QueryMovements queries the "movements" edge of the Event entity.
 func (e *Event) QueryMovements() *MovementQuery {
 	return NewEventClient(e.config).QueryMovements(e)
+}
+
+// QueryMoves queries the "moves" edge of the Event entity.
+func (e *Event) QueryMoves() *MoveQuery {
+	return NewEventClient(e.config).QueryMoves(e)
 }
 
 // Update returns a builder for updating this Event.

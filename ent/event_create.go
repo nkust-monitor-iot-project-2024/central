@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/invader"
+	"github.com/nkust-monitor-iot-project-2024/central/ent/move"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/movement"
 )
 
@@ -77,6 +78,21 @@ func (ec *EventCreate) AddMovements(m ...*Movement) *EventCreate {
 		ids[i] = m[i].ID
 	}
 	return ec.AddMovementIDs(ids...)
+}
+
+// AddMoveIDs adds the "moves" edge to the Move entity by IDs.
+func (ec *EventCreate) AddMoveIDs(ids ...uuid.UUID) *EventCreate {
+	ec.mutation.AddMoveIDs(ids...)
+	return ec
+}
+
+// AddMoves adds the "moves" edges to the Move entity.
+func (ec *EventCreate) AddMoves(m ...*Move) *EventCreate {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return ec.AddMoveIDs(ids...)
 }
 
 // Mutation returns the EventMutation object of the builder.
@@ -201,6 +217,22 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(movement.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := ec.mutation.MovesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   event.MovesTable,
+			Columns: event.MovesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(move.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/invader"
+	"github.com/nkust-monitor-iot-project-2024/central/ent/move"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/movement"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/predicate"
 )
@@ -29,6 +30,7 @@ const (
 	// Node types.
 	TypeEvent    = "Event"
 	TypeInvader  = "Invader"
+	TypeMove     = "Move"
 	TypeMovement = "Movement"
 )
 
@@ -47,6 +49,9 @@ type EventMutation struct {
 	movements        map[uuid.UUID]struct{}
 	removedmovements map[uuid.UUID]struct{}
 	clearedmovements bool
+	moves            map[uuid.UUID]struct{}
+	removedmoves     map[uuid.UUID]struct{}
+	clearedmoves     bool
 	done             bool
 	oldValue         func(context.Context) (*Event, error)
 	predicates       []predicate.Event
@@ -336,6 +341,60 @@ func (m *EventMutation) ResetMovements() {
 	m.removedmovements = nil
 }
 
+// AddMoveIDs adds the "moves" edge to the Move entity by ids.
+func (m *EventMutation) AddMoveIDs(ids ...uuid.UUID) {
+	if m.moves == nil {
+		m.moves = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.moves[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMoves clears the "moves" edge to the Move entity.
+func (m *EventMutation) ClearMoves() {
+	m.clearedmoves = true
+}
+
+// MovesCleared reports if the "moves" edge to the Move entity was cleared.
+func (m *EventMutation) MovesCleared() bool {
+	return m.clearedmoves
+}
+
+// RemoveMoveIDs removes the "moves" edge to the Move entity by IDs.
+func (m *EventMutation) RemoveMoveIDs(ids ...uuid.UUID) {
+	if m.removedmoves == nil {
+		m.removedmoves = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.moves, ids[i])
+		m.removedmoves[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMoves returns the removed IDs of the "moves" edge to the Move entity.
+func (m *EventMutation) RemovedMovesIDs() (ids []uuid.UUID) {
+	for id := range m.removedmoves {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MovesIDs returns the "moves" edge IDs in the mutation.
+func (m *EventMutation) MovesIDs() (ids []uuid.UUID) {
+	for id := range m.moves {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMoves resets all changes to the "moves" edge.
+func (m *EventMutation) ResetMoves() {
+	m.moves = nil
+	m.clearedmoves = false
+	m.removedmoves = nil
+}
+
 // Where appends a list predicates to the EventMutation builder.
 func (m *EventMutation) Where(ps ...predicate.Event) {
 	m.predicates = append(m.predicates, ps...)
@@ -486,12 +545,15 @@ func (m *EventMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *EventMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.invaders != nil {
 		edges = append(edges, event.EdgeInvaders)
 	}
 	if m.movements != nil {
 		edges = append(edges, event.EdgeMovements)
+	}
+	if m.moves != nil {
+		edges = append(edges, event.EdgeMoves)
 	}
 	return edges
 }
@@ -512,18 +574,27 @@ func (m *EventMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case event.EdgeMoves:
+		ids := make([]ent.Value, 0, len(m.moves))
+		for id := range m.moves {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *EventMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.removedinvaders != nil {
 		edges = append(edges, event.EdgeInvaders)
 	}
 	if m.removedmovements != nil {
 		edges = append(edges, event.EdgeMovements)
+	}
+	if m.removedmoves != nil {
+		edges = append(edges, event.EdgeMoves)
 	}
 	return edges
 }
@@ -544,18 +615,27 @@ func (m *EventMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case event.EdgeMoves:
+		ids := make([]ent.Value, 0, len(m.removedmoves))
+		for id := range m.removedmoves {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *EventMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.clearedinvaders {
 		edges = append(edges, event.EdgeInvaders)
 	}
 	if m.clearedmovements {
 		edges = append(edges, event.EdgeMovements)
+	}
+	if m.clearedmoves {
+		edges = append(edges, event.EdgeMoves)
 	}
 	return edges
 }
@@ -568,6 +648,8 @@ func (m *EventMutation) EdgeCleared(name string) bool {
 		return m.clearedinvaders
 	case event.EdgeMovements:
 		return m.clearedmovements
+	case event.EdgeMoves:
+		return m.clearedmoves
 	}
 	return false
 }
@@ -589,6 +671,9 @@ func (m *EventMutation) ResetEdge(name string) error {
 		return nil
 	case event.EdgeMovements:
 		m.ResetMovements()
+		return nil
+	case event.EdgeMoves:
+		m.ResetMoves()
 		return nil
 	}
 	return fmt.Errorf("unknown Event edge %s", name)
@@ -1107,6 +1192,467 @@ func (m *InvaderMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Invader edge %s", name)
+}
+
+// MoveMutation represents an operation that mutates the Move nodes in the graph.
+type MoveMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *uuid.UUID
+	cycle           *float64
+	addcycle        *float64
+	clearedFields   map[string]struct{}
+	event_id        map[uuid.UUID]struct{}
+	removedevent_id map[uuid.UUID]struct{}
+	clearedevent_id bool
+	done            bool
+	oldValue        func(context.Context) (*Move, error)
+	predicates      []predicate.Move
+}
+
+var _ ent.Mutation = (*MoveMutation)(nil)
+
+// moveOption allows management of the mutation configuration using functional options.
+type moveOption func(*MoveMutation)
+
+// newMoveMutation creates new mutation for the Move entity.
+func newMoveMutation(c config, op Op, opts ...moveOption) *MoveMutation {
+	m := &MoveMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeMove,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withMoveID sets the ID field of the mutation.
+func withMoveID(id uuid.UUID) moveOption {
+	return func(m *MoveMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Move
+		)
+		m.oldValue = func(ctx context.Context) (*Move, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Move.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withMove sets the old Move of the mutation.
+func withMove(node *Move) moveOption {
+	return func(m *MoveMutation) {
+		m.oldValue = func(context.Context) (*Move, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m MoveMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m MoveMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Move entities.
+func (m *MoveMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *MoveMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *MoveMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Move.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCycle sets the "cycle" field.
+func (m *MoveMutation) SetCycle(f float64) {
+	m.cycle = &f
+	m.addcycle = nil
+}
+
+// Cycle returns the value of the "cycle" field in the mutation.
+func (m *MoveMutation) Cycle() (r float64, exists bool) {
+	v := m.cycle
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCycle returns the old "cycle" field's value of the Move entity.
+// If the Move object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MoveMutation) OldCycle(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCycle is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCycle requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCycle: %w", err)
+	}
+	return oldValue.Cycle, nil
+}
+
+// AddCycle adds f to the "cycle" field.
+func (m *MoveMutation) AddCycle(f float64) {
+	if m.addcycle != nil {
+		*m.addcycle += f
+	} else {
+		m.addcycle = &f
+	}
+}
+
+// AddedCycle returns the value that was added to the "cycle" field in this mutation.
+func (m *MoveMutation) AddedCycle() (r float64, exists bool) {
+	v := m.addcycle
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetCycle resets all changes to the "cycle" field.
+func (m *MoveMutation) ResetCycle() {
+	m.cycle = nil
+	m.addcycle = nil
+}
+
+// AddEventIDIDs adds the "event_id" edge to the Event entity by ids.
+func (m *MoveMutation) AddEventIDIDs(ids ...uuid.UUID) {
+	if m.event_id == nil {
+		m.event_id = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.event_id[ids[i]] = struct{}{}
+	}
+}
+
+// ClearEventID clears the "event_id" edge to the Event entity.
+func (m *MoveMutation) ClearEventID() {
+	m.clearedevent_id = true
+}
+
+// EventIDCleared reports if the "event_id" edge to the Event entity was cleared.
+func (m *MoveMutation) EventIDCleared() bool {
+	return m.clearedevent_id
+}
+
+// RemoveEventIDIDs removes the "event_id" edge to the Event entity by IDs.
+func (m *MoveMutation) RemoveEventIDIDs(ids ...uuid.UUID) {
+	if m.removedevent_id == nil {
+		m.removedevent_id = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.event_id, ids[i])
+		m.removedevent_id[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedEventID returns the removed IDs of the "event_id" edge to the Event entity.
+func (m *MoveMutation) RemovedEventIDIDs() (ids []uuid.UUID) {
+	for id := range m.removedevent_id {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// EventIDIDs returns the "event_id" edge IDs in the mutation.
+func (m *MoveMutation) EventIDIDs() (ids []uuid.UUID) {
+	for id := range m.event_id {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetEventID resets all changes to the "event_id" edge.
+func (m *MoveMutation) ResetEventID() {
+	m.event_id = nil
+	m.clearedevent_id = false
+	m.removedevent_id = nil
+}
+
+// Where appends a list predicates to the MoveMutation builder.
+func (m *MoveMutation) Where(ps ...predicate.Move) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the MoveMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *MoveMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Move, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *MoveMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *MoveMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Move).
+func (m *MoveMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *MoveMutation) Fields() []string {
+	fields := make([]string, 0, 1)
+	if m.cycle != nil {
+		fields = append(fields, move.FieldCycle)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *MoveMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case move.FieldCycle:
+		return m.Cycle()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *MoveMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case move.FieldCycle:
+		return m.OldCycle(ctx)
+	}
+	return nil, fmt.Errorf("unknown Move field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MoveMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case move.FieldCycle:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCycle(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Move field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *MoveMutation) AddedFields() []string {
+	var fields []string
+	if m.addcycle != nil {
+		fields = append(fields, move.FieldCycle)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *MoveMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case move.FieldCycle:
+		return m.AddedCycle()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MoveMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case move.FieldCycle:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCycle(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Move numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *MoveMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *MoveMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *MoveMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Move nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *MoveMutation) ResetField(name string) error {
+	switch name {
+	case move.FieldCycle:
+		m.ResetCycle()
+		return nil
+	}
+	return fmt.Errorf("unknown Move field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *MoveMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.event_id != nil {
+		edges = append(edges, move.EdgeEventID)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *MoveMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case move.EdgeEventID:
+		ids := make([]ent.Value, 0, len(m.event_id))
+		for id := range m.event_id {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *MoveMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedevent_id != nil {
+		edges = append(edges, move.EdgeEventID)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *MoveMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case move.EdgeEventID:
+		ids := make([]ent.Value, 0, len(m.removedevent_id))
+		for id := range m.removedevent_id {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *MoveMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedevent_id {
+		edges = append(edges, move.EdgeEventID)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *MoveMutation) EdgeCleared(name string) bool {
+	switch name {
+	case move.EdgeEventID:
+		return m.clearedevent_id
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *MoveMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Move unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *MoveMutation) ResetEdge(name string) error {
+	switch name {
+	case move.EdgeEventID:
+		m.ResetEventID()
+		return nil
+	}
+	return fmt.Errorf("unknown Move edge %s", name)
 }
 
 // MovementMutation represents an operation that mutates the Movement nodes in the graph.

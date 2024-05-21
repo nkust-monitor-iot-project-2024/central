@@ -17,8 +17,8 @@ type Event struct {
 // Fields of the Event.
 func (Event) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.Must(uuid.NewUUID())),
-		field.Enum("type").Values("invaded", "movement"),
+		field.UUID("id", uuid.Must(uuid.NewV7())),
+		field.Enum("type").Values("invaded", "movement", "move"),
 		field.Time("created_at").Default(time.Now),
 	}
 }
@@ -28,5 +28,6 @@ func (Event) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("invaders", Invader.Type),
 		edge.To("movements", Movement.Type),
+		edge.To("moves", Move.Type),
 	}
 }

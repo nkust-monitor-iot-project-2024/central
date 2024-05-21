@@ -11,7 +11,7 @@ var (
 	// EventsColumns holds the columns for the "events" table.
 	EventsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"invaded", "movement"}},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"invaded", "movement", "move"}},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// EventsTable holds the schema information for the "events" table.
@@ -31,6 +31,17 @@ var (
 		Name:       "invaders",
 		Columns:    InvadersColumns,
 		PrimaryKey: []*schema.Column{InvadersColumns[0]},
+	}
+	// MovesColumns holds the columns for the "moves" table.
+	MovesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "cycle", Type: field.TypeFloat64},
+	}
+	// MovesTable holds the schema information for the "moves" table.
+	MovesTable = &schema.Table{
+		Name:       "moves",
+		Columns:    MovesColumns,
+		PrimaryKey: []*schema.Column{MovesColumns[0]},
 	}
 	// MovementsColumns holds the columns for the "movements" table.
 	MovementsColumns = []*schema.Column{
@@ -93,13 +104,40 @@ var (
 			},
 		},
 	}
+	// EventMovesColumns holds the columns for the "event_moves" table.
+	EventMovesColumns = []*schema.Column{
+		{Name: "event_id", Type: field.TypeUUID},
+		{Name: "move_id", Type: field.TypeUUID},
+	}
+	// EventMovesTable holds the schema information for the "event_moves" table.
+	EventMovesTable = &schema.Table{
+		Name:       "event_moves",
+		Columns:    EventMovesColumns,
+		PrimaryKey: []*schema.Column{EventMovesColumns[0], EventMovesColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "event_moves_event_id",
+				Columns:    []*schema.Column{EventMovesColumns[0]},
+				RefColumns: []*schema.Column{EventsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "event_moves_move_id",
+				Columns:    []*schema.Column{EventMovesColumns[1]},
+				RefColumns: []*schema.Column{MovesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		EventsTable,
 		InvadersTable,
+		MovesTable,
 		MovementsTable,
 		EventInvadersTable,
 		EventMovementsTable,
+		EventMovesTable,
 	}
 )
 
@@ -108,4 +146,6 @@ func init() {
 	EventInvadersTable.ForeignKeys[1].RefTable = InvadersTable
 	EventMovementsTable.ForeignKeys[0].RefTable = EventsTable
 	EventMovementsTable.ForeignKeys[1].RefTable = MovementsTable
+	EventMovesTable.ForeignKeys[0].RefTable = EventsTable
+	EventMovesTable.ForeignKeys[1].RefTable = MovesTable
 }

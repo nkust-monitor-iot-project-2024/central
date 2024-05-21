@@ -33,6 +33,18 @@ func (f InvaderFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.InvaderMutation", m)
 }
 
+// The MoveFunc type is an adapter to allow the use of ordinary
+// function as Move mutator.
+type MoveFunc func(context.Context, *ent.MoveMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f MoveFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.MoveMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MoveMutation", m)
+}
+
 // The MovementFunc type is an adapter to allow the use of ordinary
 // function as Movement mutator.
 type MovementFunc func(context.Context, *ent.MovementMutation) (ent.Value, error)

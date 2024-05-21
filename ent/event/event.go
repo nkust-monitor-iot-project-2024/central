@@ -23,6 +23,8 @@ const (
 	EdgeInvaders = "invaders"
 	// EdgeMovements holds the string denoting the movements edge name in mutations.
 	EdgeMovements = "movements"
+	// EdgeMoves holds the string denoting the moves edge name in mutations.
+	EdgeMoves = "moves"
 	// Table holds the table name of the event in the database.
 	Table = "events"
 	// InvadersTable is the table that holds the invaders relation/edge. The primary key declared below.
@@ -35,6 +37,11 @@ const (
 	// MovementsInverseTable is the table name for the Movement entity.
 	// It exists in this package in order to avoid circular dependency with the "movement" package.
 	MovementsInverseTable = "movements"
+	// MovesTable is the table that holds the moves relation/edge. The primary key declared below.
+	MovesTable = "event_moves"
+	// MovesInverseTable is the table name for the Move entity.
+	// It exists in this package in order to avoid circular dependency with the "move" package.
+	MovesInverseTable = "moves"
 )
 
 // Columns holds all SQL columns for event fields.
@@ -51,6 +58,9 @@ var (
 	// MovementsPrimaryKey and MovementsColumn2 are the table columns denoting the
 	// primary key for the movements relation (M2M).
 	MovementsPrimaryKey = []string{"event_id", "movement_id"}
+	// MovesPrimaryKey and MovesColumn2 are the table columns denoting the
+	// primary key for the moves relation (M2M).
+	MovesPrimaryKey = []string{"event_id", "move_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -75,6 +85,7 @@ type Type string
 const (
 	TypeInvaded  Type = "invaded"
 	TypeMovement Type = "movement"
+	TypeMove     Type = "move"
 )
 
 func (_type Type) String() string {
@@ -84,7 +95,7 @@ func (_type Type) String() string {
 // TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
 func TypeValidator(_type Type) error {
 	switch _type {
-	case TypeInvaded, TypeMovement:
+	case TypeInvaded, TypeMovement, TypeMove:
 		return nil
 	default:
 		return fmt.Errorf("event: invalid enum value for type field: %q", _type)
@@ -136,6 +147,20 @@ func ByMovements(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newMovementsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByMovesCount orders the results by moves count.
+func ByMovesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newMovesStep(), opts...)
+	}
+}
+
+// ByMoves orders the results by moves terms.
+func ByMoves(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newMovesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newInvadersStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -148,5 +173,12 @@ func newMovementsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(MovementsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, false, MovementsTable, MovementsPrimaryKey...),
+	)
+}
+func newMovesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(MovesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, MovesTable, MovesPrimaryKey...),
 	)
 }

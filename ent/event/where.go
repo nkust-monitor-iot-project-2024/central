@@ -167,6 +167,29 @@ func HasMovementsWith(preds ...predicate.Movement) predicate.Event {
 	})
 }
 
+// HasMoves applies the HasEdge predicate on the "moves" edge.
+func HasMoves() predicate.Event {
+	return predicate.Event(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, MovesTable, MovesPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasMovesWith applies the HasEdge predicate on the "moves" edge with a given conditions (other predicates).
+func HasMovesWith(preds ...predicate.Move) predicate.Event {
+	return predicate.Event(func(s *sql.Selector) {
+		step := newMovesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Event) predicate.Event {
 	return predicate.Event(sql.AndPredicates(predicates...))

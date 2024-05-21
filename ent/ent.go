@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/invader"
+	"github.com/nkust-monitor-iot-project-2024/central/ent/move"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/movement"
 )
 
@@ -77,6 +78,7 @@ func checkColumn(table, column string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			event.Table:    event.ValidColumn,
 			invader.Table:  invader.ValidColumn,
+			move.Table:     move.ValidColumn,
 			movement.Table: movement.ValidColumn,
 		})
 	})

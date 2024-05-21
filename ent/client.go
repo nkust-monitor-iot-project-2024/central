@@ -18,6 +18,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/invader"
+	"github.com/nkust-monitor-iot-project-2024/central/ent/move"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/movement"
 )
 
@@ -30,6 +31,8 @@ type Client struct {
 	Event *EventClient
 	// Invader is the client for interacting with the Invader builders.
 	Invader *InvaderClient
+	// Move is the client for interacting with the Move builders.
+	Move *MoveClient
 	// Movement is the client for interacting with the Movement builders.
 	Movement *MovementClient
 }
@@ -45,6 +48,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Event = NewEventClient(c.config)
 	c.Invader = NewInvaderClient(c.config)
+	c.Move = NewMoveClient(c.config)
 	c.Movement = NewMovementClient(c.config)
 }
 
@@ -140,6 +144,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:   cfg,
 		Event:    NewEventClient(cfg),
 		Invader:  NewInvaderClient(cfg),
+		Move:     NewMoveClient(cfg),
 		Movement: NewMovementClient(cfg),
 	}, nil
 }
@@ -162,6 +167,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:   cfg,
 		Event:    NewEventClient(cfg),
 		Invader:  NewInvaderClient(cfg),
+		Move:     NewMoveClient(cfg),
 		Movement: NewMovementClient(cfg),
 	}, nil
 }
@@ -193,6 +199,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	c.Event.Use(hooks...)
 	c.Invader.Use(hooks...)
+	c.Move.Use(hooks...)
 	c.Movement.Use(hooks...)
 }
 
@@ -201,6 +208,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Event.Intercept(interceptors...)
 	c.Invader.Intercept(interceptors...)
+	c.Move.Intercept(interceptors...)
 	c.Movement.Intercept(interceptors...)
 }
 
@@ -211,6 +219,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Event.mutate(ctx, m)
 	case *InvaderMutation:
 		return c.Invader.mutate(ctx, m)
+	case *MoveMutation:
+		return c.Move.mutate(ctx, m)
 	case *MovementMutation:
 		return c.Movement.mutate(ctx, m)
 	default:
@@ -351,6 +361,22 @@ func (c *EventClient) QueryMovements(e *Event) *MovementQuery {
 			sqlgraph.From(event.Table, event.FieldID, id),
 			sqlgraph.To(movement.Table, movement.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, event.MovementsTable, event.MovementsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(e.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryMoves queries the moves edge of a Event.
+func (c *EventClient) QueryMoves(e *Event) *MoveQuery {
+	query := (&MoveClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := e.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(event.Table, event.FieldID, id),
+			sqlgraph.To(move.Table, move.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, event.MovesTable, event.MovesPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(e.driver.Dialect(), step)
 		return fromV, nil
@@ -532,6 +558,155 @@ func (c *InvaderClient) mutate(ctx context.Context, m *InvaderMutation) (Value, 
 	}
 }
 
+// MoveClient is a client for the Move schema.
+type MoveClient struct {
+	config
+}
+
+// NewMoveClient returns a client for the Move from the given config.
+func NewMoveClient(c config) *MoveClient {
+	return &MoveClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `move.Hooks(f(g(h())))`.
+func (c *MoveClient) Use(hooks ...Hook) {
+	c.hooks.Move = append(c.hooks.Move, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `move.Intercept(f(g(h())))`.
+func (c *MoveClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Move = append(c.inters.Move, interceptors...)
+}
+
+// Create returns a builder for creating a Move entity.
+func (c *MoveClient) Create() *MoveCreate {
+	mutation := newMoveMutation(c.config, OpCreate)
+	return &MoveCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Move entities.
+func (c *MoveClient) CreateBulk(builders ...*MoveCreate) *MoveCreateBulk {
+	return &MoveCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *MoveClient) MapCreateBulk(slice any, setFunc func(*MoveCreate, int)) *MoveCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &MoveCreateBulk{err: fmt.Errorf("calling to MoveClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*MoveCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &MoveCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Move.
+func (c *MoveClient) Update() *MoveUpdate {
+	mutation := newMoveMutation(c.config, OpUpdate)
+	return &MoveUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *MoveClient) UpdateOne(m *Move) *MoveUpdateOne {
+	mutation := newMoveMutation(c.config, OpUpdateOne, withMove(m))
+	return &MoveUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *MoveClient) UpdateOneID(id uuid.UUID) *MoveUpdateOne {
+	mutation := newMoveMutation(c.config, OpUpdateOne, withMoveID(id))
+	return &MoveUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Move.
+func (c *MoveClient) Delete() *MoveDelete {
+	mutation := newMoveMutation(c.config, OpDelete)
+	return &MoveDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *MoveClient) DeleteOne(m *Move) *MoveDeleteOne {
+	return c.DeleteOneID(m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *MoveClient) DeleteOneID(id uuid.UUID) *MoveDeleteOne {
+	builder := c.Delete().Where(move.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &MoveDeleteOne{builder}
+}
+
+// Query returns a query builder for Move.
+func (c *MoveClient) Query() *MoveQuery {
+	return &MoveQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeMove},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Move entity by its id.
+func (c *MoveClient) Get(ctx context.Context, id uuid.UUID) (*Move, error) {
+	return c.Query().Where(move.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *MoveClient) GetX(ctx context.Context, id uuid.UUID) *Move {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryEventID queries the event_id edge of a Move.
+func (c *MoveClient) QueryEventID(m *Move) *EventQuery {
+	query := (&EventClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(move.Table, move.FieldID, id),
+			sqlgraph.To(event.Table, event.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, move.EventIDTable, move.EventIDPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *MoveClient) Hooks() []Hook {
+	return c.hooks.Move
+}
+
+// Interceptors returns the client interceptors.
+func (c *MoveClient) Interceptors() []Interceptor {
+	return c.inters.Move
+}
+
+func (c *MoveClient) mutate(ctx context.Context, m *MoveMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&MoveCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&MoveUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&MoveUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&MoveDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Move mutation op: %q", m.Op())
+	}
+}
+
 // MovementClient is a client for the Movement schema.
 type MovementClient struct {
 	config
@@ -684,9 +859,9 @@ func (c *MovementClient) mutate(ctx context.Context, m *MovementMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Event, Invader, Movement []ent.Hook
+		Event, Invader, Move, Movement []ent.Hook
 	}
 	inters struct {
-		Event, Invader, Movement []ent.Interceptor
+		Event, Invader, Move, Movement []ent.Interceptor
 	}
 )

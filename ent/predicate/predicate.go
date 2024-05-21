@@ -12,5 +12,8 @@ type Event func(*sql.Selector)
 // Invader is the predicate function for invader builders.
 type Invader func(*sql.Selector)
 
+// Move is the predicate function for move builders.
+type Move func(*sql.Selector)
+
 // Movement is the predicate function for movement builders.
 type Movement func(*sql.Selector)
