@@ -10,6 +10,25 @@ import (
 type Event interface {
 	GetEventID() uuid.UUID
 	GetEmittedAt() time.Time
+	GetType() EventType
+}
+
+// BriefEvent represents a brief event (that did not contains anything detailed).
+type BriefEvent struct {
+	Metadata Metadata  `json:"metadata"`
+	Type     EventType `json:"type"`
+}
+
+func (b *BriefEvent) GetEventID() uuid.UUID {
+	return b.Metadata.GetEventID()
+}
+
+func (b *BriefEvent) GetEmittedAt() time.Time {
+	return b.Metadata.GetEmittedAt()
+}
+
+func (b *BriefEvent) GetType() EventType {
+	return b.Type
 }
 
 // MovementEvent represents a movement event.
@@ -24,6 +43,10 @@ func (m *MovementEvent) GetEventID() uuid.UUID {
 
 func (m *MovementEvent) GetEmittedAt() time.Time {
 	return m.Metadata.GetEmittedAt()
+}
+
+func (m *MovementEvent) GetType() EventType {
+	return EventTypeMovement
 }
 
 func (m *MovementEvent) GetPicture() []byte {
@@ -42,6 +65,10 @@ func (i *InvadedEvent) GetEventID() uuid.UUID {
 
 func (i *InvadedEvent) GetEmittedAt() time.Time {
 	return i.Metadata.GetEmittedAt()
+}
+
+func (i *InvadedEvent) GetType() EventType {
+	return EventTypeInvaded
 }
 
 func (i *InvadedEvent) GetInvaders() []Invader {
@@ -64,7 +91,12 @@ func (e *Metadata) GetEmittedAt() time.Time {
 
 // Movement represents movement information of an event.
 type Movement struct {
-	Picture []byte `json:"picture"`
+	MovementID uuid.UUID `json:"movement_id"`
+	Picture    []byte    `json:"picture"`
+}
+
+func (m *Movement) GetMovementID() uuid.UUID {
+	return m.MovementID
 }
 
 func (m *Movement) GetPicture() []byte {
@@ -73,8 +105,13 @@ func (m *Movement) GetPicture() []byte {
 
 // Invader represents invaders of an event.
 type Invader struct {
-	Picture    []byte  `json:"picture"`
-	Confidence float64 `json:"confidence"`
+	InvaderID  uuid.UUID `json:"invader_id"`
+	Picture    []byte    `json:"picture"`
+	Confidence float64   `json:"confidence"`
+}
+
+func (i *Invader) GetInvaderID() uuid.UUID {
+	return i.InvaderID
 }
 
 func (i *Invader) GetPicture() []byte {
