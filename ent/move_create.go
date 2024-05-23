@@ -33,19 +33,19 @@ func (mc *MoveCreate) SetID(u uuid.UUID) *MoveCreate {
 	return mc
 }
 
-// AddEventIDIDs adds the "event_id" edge to the Event entity by IDs.
-func (mc *MoveCreate) AddEventIDIDs(ids ...uuid.UUID) *MoveCreate {
-	mc.mutation.AddEventIDIDs(ids...)
+// AddEventIDs adds the "event" edge to the Event entity by IDs.
+func (mc *MoveCreate) AddEventIDs(ids ...uuid.UUID) *MoveCreate {
+	mc.mutation.AddEventIDs(ids...)
 	return mc
 }
 
-// AddEventID adds the "event_id" edges to the Event entity.
-func (mc *MoveCreate) AddEventID(e ...*Event) *MoveCreate {
+// AddEvent adds the "event" edges to the Event entity.
+func (mc *MoveCreate) AddEvent(e ...*Event) *MoveCreate {
 	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
-	return mc.AddEventIDIDs(ids...)
+	return mc.AddEventIDs(ids...)
 }
 
 // Mutation returns the MoveMutation object of the builder.
@@ -85,8 +85,8 @@ func (mc *MoveCreate) check() error {
 	if _, ok := mc.mutation.Cycle(); !ok {
 		return &ValidationError{Name: "cycle", err: errors.New(`ent: missing required field "Move.cycle"`)}
 	}
-	if len(mc.mutation.EventIDIDs()) == 0 {
-		return &ValidationError{Name: "event_id", err: errors.New(`ent: missing required edge "Move.event_id"`)}
+	if len(mc.mutation.EventIDs()) == 0 {
+		return &ValidationError{Name: "event", err: errors.New(`ent: missing required edge "Move.event"`)}
 	}
 	return nil
 }
@@ -127,12 +127,12 @@ func (mc *MoveCreate) createSpec() (*Move, *sqlgraph.CreateSpec) {
 		_spec.SetField(move.FieldCycle, field.TypeFloat64, value)
 		_node.Cycle = value
 	}
-	if nodes := mc.mutation.EventIDIDs(); len(nodes) > 0 {
+	if nodes := mc.mutation.EventIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   move.EventIDTable,
-			Columns: move.EventIDPrimaryKey,
+			Table:   move.EventTable,
+			Columns: move.EventPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),

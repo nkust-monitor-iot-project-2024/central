@@ -99,21 +99,21 @@ func PictureLTE(v []byte) predicate.Movement {
 	return predicate.Movement(sql.FieldLTE(FieldPicture, v))
 }
 
-// HasEventID applies the HasEdge predicate on the "event_id" edge.
-func HasEventID() predicate.Movement {
+// HasEvent applies the HasEdge predicate on the "event" edge.
+func HasEvent() predicate.Movement {
 	return predicate.Movement(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, EventIDTable, EventIDPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2M, true, EventTable, EventPrimaryKey...),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasEventIDWith applies the HasEdge predicate on the "event_id" edge with a given conditions (other predicates).
-func HasEventIDWith(preds ...predicate.Event) predicate.Movement {
+// HasEventWith applies the HasEdge predicate on the "event" edge with a given conditions (other predicates).
+func HasEventWith(preds ...predicate.Event) predicate.Movement {
 	return predicate.Movement(func(s *sql.Selector) {
-		step := newEventIDStep()
+		step := newEventStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

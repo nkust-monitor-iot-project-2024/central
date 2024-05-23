@@ -517,15 +517,15 @@ func (c *InvaderClient) GetX(ctx context.Context, id uuid.UUID) *Invader {
 	return obj
 }
 
-// QueryEventID queries the event_id edge of a Invader.
-func (c *InvaderClient) QueryEventID(i *Invader) *EventQuery {
+// QueryEvent queries the event edge of a Invader.
+func (c *InvaderClient) QueryEvent(i *Invader) *EventQuery {
 	query := (&EventClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := i.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(invader.Table, invader.FieldID, id),
 			sqlgraph.To(event.Table, event.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, invader.EventIDTable, invader.EventIDPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2M, true, invader.EventTable, invader.EventPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(i.driver.Dialect(), step)
 		return fromV, nil
@@ -666,15 +666,15 @@ func (c *MoveClient) GetX(ctx context.Context, id uuid.UUID) *Move {
 	return obj
 }
 
-// QueryEventID queries the event_id edge of a Move.
-func (c *MoveClient) QueryEventID(m *Move) *EventQuery {
+// QueryEvent queries the event edge of a Move.
+func (c *MoveClient) QueryEvent(m *Move) *EventQuery {
 	query := (&EventClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(move.Table, move.FieldID, id),
 			sqlgraph.To(event.Table, event.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, move.EventIDTable, move.EventIDPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2M, true, move.EventTable, move.EventPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(m.driver.Dialect(), step)
 		return fromV, nil
@@ -815,15 +815,15 @@ func (c *MovementClient) GetX(ctx context.Context, id uuid.UUID) *Movement {
 	return obj
 }
 
-// QueryEventID queries the event_id edge of a Movement.
-func (c *MovementClient) QueryEventID(m *Movement) *EventQuery {
+// QueryEvent queries the event edge of a Movement.
+func (c *MovementClient) QueryEvent(m *Movement) *EventQuery {
 	query := (&EventClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(movement.Table, movement.FieldID, id),
 			sqlgraph.To(event.Table, event.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, movement.EventIDTable, movement.EventIDPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2M, true, movement.EventTable, movement.EventPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(m.driver.Dialect(), step)
 		return fromV, nil

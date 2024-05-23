@@ -24,6 +24,6 @@ func (Invader) Fields() []ent.Field {
 // Edges of the Invader.
 func (Invader) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("event_id", Event.Type).Ref("invaders").Required(),
+		edge.From("event", Event.Type).Ref("invaders").Required(),
 	}
 }

@@ -20,11 +20,11 @@ import (
 // InvaderQuery is the builder for querying Invader entities.
 type InvaderQuery struct {
 	config
-	ctx         *QueryContext
-	order       []invader.OrderOption
-	inters      []Interceptor
-	predicates  []predicate.Invader
-	withEventID *EventQuery
+	ctx        *QueryContext
+	order      []invader.OrderOption
+	inters     []Interceptor
+	predicates []predicate.Invader
+	withEvent  *EventQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -61,8 +61,8 @@ func (iq *InvaderQuery) Order(o ...invader.OrderOption) *InvaderQuery {
 	return iq
 }
 
-// QueryEventID chains the current query on the "event_id" edge.
-func (iq *InvaderQuery) QueryEventID() *EventQuery {
+// QueryEvent chains the current query on the "event" edge.
+func (iq *InvaderQuery) QueryEvent() *EventQuery {
 	query := (&EventClient{config: iq.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := iq.prepareQuery(ctx); err != nil {
@@ -75,7 +75,7 @@ func (iq *InvaderQuery) QueryEventID() *EventQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(invader.Table, invader.FieldID, selector),
 			sqlgraph.To(event.Table, event.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, invader.EventIDTable, invader.EventIDPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2M, true, invader.EventTable, invader.EventPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(iq.driver.Dialect(), step)
 		return fromU, nil
@@ -270,26 +270,26 @@ func (iq *InvaderQuery) Clone() *InvaderQuery {
 		return nil
 	}
 	return &InvaderQuery{
-		config:      iq.config,
-		ctx:         iq.ctx.Clone(),
-		order:       append([]invader.OrderOption{}, iq.order...),
-		inters:      append([]Interceptor{}, iq.inters...),
-		predicates:  append([]predicate.Invader{}, iq.predicates...),
-		withEventID: iq.withEventID.Clone(),
+		config:     iq.config,
+		ctx:        iq.ctx.Clone(),
+		order:      append([]invader.OrderOption{}, iq.order...),
+		inters:     append([]Interceptor{}, iq.inters...),
+		predicates: append([]predicate.Invader{}, iq.predicates...),
+		withEvent:  iq.withEvent.Clone(),
 		// clone intermediate query.
 		sql:  iq.sql.Clone(),
 		path: iq.path,
 	}
 }
 
-// WithEventID tells the query-builder to eager-load the nodes that are connected to
-// the "event_id" edge. The optional arguments are used to configure the query builder of the edge.
-func (iq *InvaderQuery) WithEventID(opts ...func(*EventQuery)) *InvaderQuery {
+// WithEvent tells the query-builder to eager-load the nodes that are connected to
+// the "event" edge. The optional arguments are used to configure the query builder of the edge.
+func (iq *InvaderQuery) WithEvent(opts ...func(*EventQuery)) *InvaderQuery {
 	query := (&EventClient{config: iq.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	iq.withEventID = query
+	iq.withEvent = query
 	return iq
 }
 
@@ -372,7 +372,7 @@ func (iq *InvaderQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Inva
 		nodes       = []*Invader{}
 		_spec       = iq.querySpec()
 		loadedTypes = [1]bool{
-			iq.withEventID != nil,
+			iq.withEvent != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -393,17 +393,17 @@ func (iq *InvaderQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Inva
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := iq.withEventID; query != nil {
-		if err := iq.loadEventID(ctx, query, nodes,
-			func(n *Invader) { n.Edges.EventID = []*Event{} },
-			func(n *Invader, e *Event) { n.Edges.EventID = append(n.Edges.EventID, e) }); err != nil {
+	if query := iq.withEvent; query != nil {
+		if err := iq.loadEvent(ctx, query, nodes,
+			func(n *Invader) { n.Edges.Event = []*Event{} },
+			func(n *Invader, e *Event) { n.Edges.Event = append(n.Edges.Event, e) }); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (iq *InvaderQuery) loadEventID(ctx context.Context, query *EventQuery, nodes []*Invader, init func(*Invader), assign func(*Invader, *Event)) error {
+func (iq *InvaderQuery) loadEvent(ctx context.Context, query *EventQuery, nodes []*Invader, init func(*Invader), assign func(*Invader, *Event)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
 	byID := make(map[uuid.UUID]*Invader)
 	nids := make(map[uuid.UUID]map[*Invader]struct{})
@@ -415,11 +415,11 @@ func (iq *InvaderQuery) loadEventID(ctx context.Context, query *EventQuery, node
 		}
 	}
 	query.Where(func(s *sql.Selector) {
-		joinT := sql.Table(invader.EventIDTable)
-		s.Join(joinT).On(s.C(event.FieldID), joinT.C(invader.EventIDPrimaryKey[0]))
-		s.Where(sql.InValues(joinT.C(invader.EventIDPrimaryKey[1]), edgeIDs...))
+		joinT := sql.Table(invader.EventTable)
+		s.Join(joinT).On(s.C(event.FieldID), joinT.C(invader.EventPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(invader.EventPrimaryKey[1]), edgeIDs...))
 		columns := s.SelectedColumns()
-		s.Select(joinT.C(invader.EventIDPrimaryKey[1]))
+		s.Select(joinT.C(invader.EventPrimaryKey[1]))
 		s.AppendSelect(columns...)
 		s.SetDistinct(false)
 	})
@@ -456,7 +456,7 @@ func (iq *InvaderQuery) loadEventID(ctx context.Context, query *EventQuery, node
 	for _, n := range neighbors {
 		nodes, ok := nids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected "event_id" node returned %v`, n.ID)
+			return fmt.Errorf(`unexpected "event" node returned %v`, n.ID)
 		}
 		for kn := range nodes {
 			assign(kn, n)

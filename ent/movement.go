@@ -27,20 +27,20 @@ type Movement struct {
 
 // MovementEdges holds the relations/edges for other nodes in the graph.
 type MovementEdges struct {
-	// EventID holds the value of the event_id edge.
-	EventID []*Event `json:"event_id,omitempty"`
+	// Event holds the value of the event edge.
+	Event []*Event `json:"event,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
 }
 
-// EventIDOrErr returns the EventID value or an error if the edge
+// EventOrErr returns the Event value or an error if the edge
 // was not loaded in eager-loading.
-func (e MovementEdges) EventIDOrErr() ([]*Event, error) {
+func (e MovementEdges) EventOrErr() ([]*Event, error) {
 	if e.loadedTypes[0] {
-		return e.EventID, nil
+		return e.Event, nil
 	}
-	return nil, &NotLoadedError{edge: "event_id"}
+	return nil, &NotLoadedError{edge: "event"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -92,9 +92,9 @@ func (m *Movement) Value(name string) (ent.Value, error) {
 	return m.selectValues.Get(name)
 }
 
-// QueryEventID queries the "event_id" edge of the Movement entity.
-func (m *Movement) QueryEventID() *EventQuery {
-	return NewMovementClient(m.config).QueryEventID(m)
+// QueryEvent queries the "event" edge of the Movement entity.
+func (m *Movement) QueryEvent() *EventQuery {
+	return NewMovementClient(m.config).QueryEvent(m)
 }
 
 // Update returns a builder for updating this Movement.

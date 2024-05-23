@@ -29,20 +29,20 @@ type Invader struct {
 
 // InvaderEdges holds the relations/edges for other nodes in the graph.
 type InvaderEdges struct {
-	// EventID holds the value of the event_id edge.
-	EventID []*Event `json:"event_id,omitempty"`
+	// Event holds the value of the event edge.
+	Event []*Event `json:"event,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
 }
 
-// EventIDOrErr returns the EventID value or an error if the edge
+// EventOrErr returns the Event value or an error if the edge
 // was not loaded in eager-loading.
-func (e InvaderEdges) EventIDOrErr() ([]*Event, error) {
+func (e InvaderEdges) EventOrErr() ([]*Event, error) {
 	if e.loadedTypes[0] {
-		return e.EventID, nil
+		return e.Event, nil
 	}
-	return nil, &NotLoadedError{edge: "event_id"}
+	return nil, &NotLoadedError{edge: "event"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -102,9 +102,9 @@ func (i *Invader) Value(name string) (ent.Value, error) {
 	return i.selectValues.Get(name)
 }
 
-// QueryEventID queries the "event_id" edge of the Invader entity.
-func (i *Invader) QueryEventID() *EventQuery {
-	return NewInvaderClient(i.config).QueryEventID(i)
+// QueryEvent queries the "event" edge of the Invader entity.
+func (i *Invader) QueryEvent() *EventQuery {
+	return NewInvaderClient(i.config).QueryEvent(i)
 }
 
 // Update returns a builder for updating this Invader.

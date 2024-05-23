@@ -20,11 +20,11 @@ import (
 // MovementQuery is the builder for querying Movement entities.
 type MovementQuery struct {
 	config
-	ctx         *QueryContext
-	order       []movement.OrderOption
-	inters      []Interceptor
-	predicates  []predicate.Movement
-	withEventID *EventQuery
+	ctx        *QueryContext
+	order      []movement.OrderOption
+	inters     []Interceptor
+	predicates []predicate.Movement
+	withEvent  *EventQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -61,8 +61,8 @@ func (mq *MovementQuery) Order(o ...movement.OrderOption) *MovementQuery {
 	return mq
 }
 
-// QueryEventID chains the current query on the "event_id" edge.
-func (mq *MovementQuery) QueryEventID() *EventQuery {
+// QueryEvent chains the current query on the "event" edge.
+func (mq *MovementQuery) QueryEvent() *EventQuery {
 	query := (&EventClient{config: mq.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := mq.prepareQuery(ctx); err != nil {
@@ -75,7 +75,7 @@ func (mq *MovementQuery) QueryEventID() *EventQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(movement.Table, movement.FieldID, selector),
 			sqlgraph.To(event.Table, event.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, movement.EventIDTable, movement.EventIDPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2M, true, movement.EventTable, movement.EventPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(mq.driver.Dialect(), step)
 		return fromU, nil
@@ -270,26 +270,26 @@ func (mq *MovementQuery) Clone() *MovementQuery {
 		return nil
 	}
 	return &MovementQuery{
-		config:      mq.config,
-		ctx:         mq.ctx.Clone(),
-		order:       append([]movement.OrderOption{}, mq.order...),
-		inters:      append([]Interceptor{}, mq.inters...),
-		predicates:  append([]predicate.Movement{}, mq.predicates...),
-		withEventID: mq.withEventID.Clone(),
+		config:     mq.config,
+		ctx:        mq.ctx.Clone(),
+		order:      append([]movement.OrderOption{}, mq.order...),
+		inters:     append([]Interceptor{}, mq.inters...),
+		predicates: append([]predicate.Movement{}, mq.predicates...),
+		withEvent:  mq.withEvent.Clone(),
 		// clone intermediate query.
 		sql:  mq.sql.Clone(),
 		path: mq.path,
 	}
 }
 
-// WithEventID tells the query-builder to eager-load the nodes that are connected to
-// the "event_id" edge. The optional arguments are used to configure the query builder of the edge.
-func (mq *MovementQuery) WithEventID(opts ...func(*EventQuery)) *MovementQuery {
+// WithEvent tells the query-builder to eager-load the nodes that are connected to
+// the "event" edge. The optional arguments are used to configure the query builder of the edge.
+func (mq *MovementQuery) WithEvent(opts ...func(*EventQuery)) *MovementQuery {
 	query := (&EventClient{config: mq.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	mq.withEventID = query
+	mq.withEvent = query
 	return mq
 }
 
@@ -372,7 +372,7 @@ func (mq *MovementQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Mov
 		nodes       = []*Movement{}
 		_spec       = mq.querySpec()
 		loadedTypes = [1]bool{
-			mq.withEventID != nil,
+			mq.withEvent != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -393,17 +393,17 @@ func (mq *MovementQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Mov
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := mq.withEventID; query != nil {
-		if err := mq.loadEventID(ctx, query, nodes,
-			func(n *Movement) { n.Edges.EventID = []*Event{} },
-			func(n *Movement, e *Event) { n.Edges.EventID = append(n.Edges.EventID, e) }); err != nil {
+	if query := mq.withEvent; query != nil {
+		if err := mq.loadEvent(ctx, query, nodes,
+			func(n *Movement) { n.Edges.Event = []*Event{} },
+			func(n *Movement, e *Event) { n.Edges.Event = append(n.Edges.Event, e) }); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (mq *MovementQuery) loadEventID(ctx context.Context, query *EventQuery, nodes []*Movement, init func(*Movement), assign func(*Movement, *Event)) error {
+func (mq *MovementQuery) loadEvent(ctx context.Context, query *EventQuery, nodes []*Movement, init func(*Movement), assign func(*Movement, *Event)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
 	byID := make(map[uuid.UUID]*Movement)
 	nids := make(map[uuid.UUID]map[*Movement]struct{})
@@ -415,11 +415,11 @@ func (mq *MovementQuery) loadEventID(ctx context.Context, query *EventQuery, nod
 		}
 	}
 	query.Where(func(s *sql.Selector) {
-		joinT := sql.Table(movement.EventIDTable)
-		s.Join(joinT).On(s.C(event.FieldID), joinT.C(movement.EventIDPrimaryKey[0]))
-		s.Where(sql.InValues(joinT.C(movement.EventIDPrimaryKey[1]), edgeIDs...))
+		joinT := sql.Table(movement.EventTable)
+		s.Join(joinT).On(s.C(event.FieldID), joinT.C(movement.EventPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(movement.EventPrimaryKey[1]), edgeIDs...))
 		columns := s.SelectedColumns()
-		s.Select(joinT.C(movement.EventIDPrimaryKey[1]))
+		s.Select(joinT.C(movement.EventPrimaryKey[1]))
 		s.AppendSelect(columns...)
 		s.SetDistinct(false)
 	})
@@ -456,7 +456,7 @@ func (mq *MovementQuery) loadEventID(ctx context.Context, query *EventQuery, nod
 	for _, n := range neighbors {
 		nodes, ok := nids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected "event_id" node returned %v`, n.ID)
+			return fmt.Errorf(`unexpected "event" node returned %v`, n.ID)
 		}
 		for kn := range nodes {
 			assign(kn, n)

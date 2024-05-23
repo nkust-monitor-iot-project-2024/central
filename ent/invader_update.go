@@ -56,19 +56,19 @@ func (iu *InvaderUpdate) AddConfidence(f float64) *InvaderUpdate {
 	return iu
 }
 
-// AddEventIDIDs adds the "event_id" edge to the Event entity by IDs.
-func (iu *InvaderUpdate) AddEventIDIDs(ids ...uuid.UUID) *InvaderUpdate {
-	iu.mutation.AddEventIDIDs(ids...)
+// AddEventIDs adds the "event" edge to the Event entity by IDs.
+func (iu *InvaderUpdate) AddEventIDs(ids ...uuid.UUID) *InvaderUpdate {
+	iu.mutation.AddEventIDs(ids...)
 	return iu
 }
 
-// AddEventID adds the "event_id" edges to the Event entity.
-func (iu *InvaderUpdate) AddEventID(e ...*Event) *InvaderUpdate {
+// AddEvent adds the "event" edges to the Event entity.
+func (iu *InvaderUpdate) AddEvent(e ...*Event) *InvaderUpdate {
 	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
-	return iu.AddEventIDIDs(ids...)
+	return iu.AddEventIDs(ids...)
 }
 
 // Mutation returns the InvaderMutation object of the builder.
@@ -76,25 +76,25 @@ func (iu *InvaderUpdate) Mutation() *InvaderMutation {
 	return iu.mutation
 }
 
-// ClearEventID clears all "event_id" edges to the Event entity.
-func (iu *InvaderUpdate) ClearEventID() *InvaderUpdate {
-	iu.mutation.ClearEventID()
+// ClearEvent clears all "event" edges to the Event entity.
+func (iu *InvaderUpdate) ClearEvent() *InvaderUpdate {
+	iu.mutation.ClearEvent()
 	return iu
 }
 
-// RemoveEventIDIDs removes the "event_id" edge to Event entities by IDs.
-func (iu *InvaderUpdate) RemoveEventIDIDs(ids ...uuid.UUID) *InvaderUpdate {
-	iu.mutation.RemoveEventIDIDs(ids...)
+// RemoveEventIDs removes the "event" edge to Event entities by IDs.
+func (iu *InvaderUpdate) RemoveEventIDs(ids ...uuid.UUID) *InvaderUpdate {
+	iu.mutation.RemoveEventIDs(ids...)
 	return iu
 }
 
-// RemoveEventID removes "event_id" edges to Event entities.
-func (iu *InvaderUpdate) RemoveEventID(e ...*Event) *InvaderUpdate {
+// RemoveEvent removes "event" edges to Event entities.
+func (iu *InvaderUpdate) RemoveEvent(e ...*Event) *InvaderUpdate {
 	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
-	return iu.RemoveEventIDIDs(ids...)
+	return iu.RemoveEventIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -142,12 +142,12 @@ func (iu *InvaderUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := iu.mutation.AddedConfidence(); ok {
 		_spec.AddField(invader.FieldConfidence, field.TypeFloat64, value)
 	}
-	if iu.mutation.EventIDCleared() {
+	if iu.mutation.EventCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   invader.EventIDTable,
-			Columns: invader.EventIDPrimaryKey,
+			Table:   invader.EventTable,
+			Columns: invader.EventPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
@@ -155,12 +155,12 @@ func (iu *InvaderUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := iu.mutation.RemovedEventIDIDs(); len(nodes) > 0 && !iu.mutation.EventIDCleared() {
+	if nodes := iu.mutation.RemovedEventIDs(); len(nodes) > 0 && !iu.mutation.EventCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   invader.EventIDTable,
-			Columns: invader.EventIDPrimaryKey,
+			Table:   invader.EventTable,
+			Columns: invader.EventPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
@@ -171,12 +171,12 @@ func (iu *InvaderUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := iu.mutation.EventIDIDs(); len(nodes) > 0 {
+	if nodes := iu.mutation.EventIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   invader.EventIDTable,
-			Columns: invader.EventIDPrimaryKey,
+			Table:   invader.EventTable,
+			Columns: invader.EventPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
@@ -234,19 +234,19 @@ func (iuo *InvaderUpdateOne) AddConfidence(f float64) *InvaderUpdateOne {
 	return iuo
 }
 
-// AddEventIDIDs adds the "event_id" edge to the Event entity by IDs.
-func (iuo *InvaderUpdateOne) AddEventIDIDs(ids ...uuid.UUID) *InvaderUpdateOne {
-	iuo.mutation.AddEventIDIDs(ids...)
+// AddEventIDs adds the "event" edge to the Event entity by IDs.
+func (iuo *InvaderUpdateOne) AddEventIDs(ids ...uuid.UUID) *InvaderUpdateOne {
+	iuo.mutation.AddEventIDs(ids...)
 	return iuo
 }
 
-// AddEventID adds the "event_id" edges to the Event entity.
-func (iuo *InvaderUpdateOne) AddEventID(e ...*Event) *InvaderUpdateOne {
+// AddEvent adds the "event" edges to the Event entity.
+func (iuo *InvaderUpdateOne) AddEvent(e ...*Event) *InvaderUpdateOne {
 	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
-	return iuo.AddEventIDIDs(ids...)
+	return iuo.AddEventIDs(ids...)
 }
 
 // Mutation returns the InvaderMutation object of the builder.
@@ -254,25 +254,25 @@ func (iuo *InvaderUpdateOne) Mutation() *InvaderMutation {
 	return iuo.mutation
 }
 
-// ClearEventID clears all "event_id" edges to the Event entity.
-func (iuo *InvaderUpdateOne) ClearEventID() *InvaderUpdateOne {
-	iuo.mutation.ClearEventID()
+// ClearEvent clears all "event" edges to the Event entity.
+func (iuo *InvaderUpdateOne) ClearEvent() *InvaderUpdateOne {
+	iuo.mutation.ClearEvent()
 	return iuo
 }
 
-// RemoveEventIDIDs removes the "event_id" edge to Event entities by IDs.
-func (iuo *InvaderUpdateOne) RemoveEventIDIDs(ids ...uuid.UUID) *InvaderUpdateOne {
-	iuo.mutation.RemoveEventIDIDs(ids...)
+// RemoveEventIDs removes the "event" edge to Event entities by IDs.
+func (iuo *InvaderUpdateOne) RemoveEventIDs(ids ...uuid.UUID) *InvaderUpdateOne {
+	iuo.mutation.RemoveEventIDs(ids...)
 	return iuo
 }
 
-// RemoveEventID removes "event_id" edges to Event entities.
-func (iuo *InvaderUpdateOne) RemoveEventID(e ...*Event) *InvaderUpdateOne {
+// RemoveEvent removes "event" edges to Event entities.
+func (iuo *InvaderUpdateOne) RemoveEvent(e ...*Event) *InvaderUpdateOne {
 	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
-	return iuo.RemoveEventIDIDs(ids...)
+	return iuo.RemoveEventIDs(ids...)
 }
 
 // Where appends a list predicates to the InvaderUpdate builder.
@@ -350,12 +350,12 @@ func (iuo *InvaderUpdateOne) sqlSave(ctx context.Context) (_node *Invader, err e
 	if value, ok := iuo.mutation.AddedConfidence(); ok {
 		_spec.AddField(invader.FieldConfidence, field.TypeFloat64, value)
 	}
-	if iuo.mutation.EventIDCleared() {
+	if iuo.mutation.EventCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   invader.EventIDTable,
-			Columns: invader.EventIDPrimaryKey,
+			Table:   invader.EventTable,
+			Columns: invader.EventPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
@@ -363,12 +363,12 @@ func (iuo *InvaderUpdateOne) sqlSave(ctx context.Context) (_node *Invader, err e
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := iuo.mutation.RemovedEventIDIDs(); len(nodes) > 0 && !iuo.mutation.EventIDCleared() {
+	if nodes := iuo.mutation.RemovedEventIDs(); len(nodes) > 0 && !iuo.mutation.EventCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   invader.EventIDTable,
-			Columns: invader.EventIDPrimaryKey,
+			Table:   invader.EventTable,
+			Columns: invader.EventPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
@@ -379,12 +379,12 @@ func (iuo *InvaderUpdateOne) sqlSave(ctx context.Context) (_node *Invader, err e
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := iuo.mutation.EventIDIDs(); len(nodes) > 0 {
+	if nodes := iuo.mutation.EventIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   invader.EventIDTable,
-			Columns: invader.EventIDPrimaryKey,
+			Table:   invader.EventTable,
+			Columns: invader.EventPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),

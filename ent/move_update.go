@@ -50,19 +50,19 @@ func (mu *MoveUpdate) AddCycle(f float64) *MoveUpdate {
 	return mu
 }
 
-// AddEventIDIDs adds the "event_id" edge to the Event entity by IDs.
-func (mu *MoveUpdate) AddEventIDIDs(ids ...uuid.UUID) *MoveUpdate {
-	mu.mutation.AddEventIDIDs(ids...)
+// AddEventIDs adds the "event" edge to the Event entity by IDs.
+func (mu *MoveUpdate) AddEventIDs(ids ...uuid.UUID) *MoveUpdate {
+	mu.mutation.AddEventIDs(ids...)
 	return mu
 }
 
-// AddEventID adds the "event_id" edges to the Event entity.
-func (mu *MoveUpdate) AddEventID(e ...*Event) *MoveUpdate {
+// AddEvent adds the "event" edges to the Event entity.
+func (mu *MoveUpdate) AddEvent(e ...*Event) *MoveUpdate {
 	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
-	return mu.AddEventIDIDs(ids...)
+	return mu.AddEventIDs(ids...)
 }
 
 // Mutation returns the MoveMutation object of the builder.
@@ -70,25 +70,25 @@ func (mu *MoveUpdate) Mutation() *MoveMutation {
 	return mu.mutation
 }
 
-// ClearEventID clears all "event_id" edges to the Event entity.
-func (mu *MoveUpdate) ClearEventID() *MoveUpdate {
-	mu.mutation.ClearEventID()
+// ClearEvent clears all "event" edges to the Event entity.
+func (mu *MoveUpdate) ClearEvent() *MoveUpdate {
+	mu.mutation.ClearEvent()
 	return mu
 }
 
-// RemoveEventIDIDs removes the "event_id" edge to Event entities by IDs.
-func (mu *MoveUpdate) RemoveEventIDIDs(ids ...uuid.UUID) *MoveUpdate {
-	mu.mutation.RemoveEventIDIDs(ids...)
+// RemoveEventIDs removes the "event" edge to Event entities by IDs.
+func (mu *MoveUpdate) RemoveEventIDs(ids ...uuid.UUID) *MoveUpdate {
+	mu.mutation.RemoveEventIDs(ids...)
 	return mu
 }
 
-// RemoveEventID removes "event_id" edges to Event entities.
-func (mu *MoveUpdate) RemoveEventID(e ...*Event) *MoveUpdate {
+// RemoveEvent removes "event" edges to Event entities.
+func (mu *MoveUpdate) RemoveEvent(e ...*Event) *MoveUpdate {
 	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
-	return mu.RemoveEventIDIDs(ids...)
+	return mu.RemoveEventIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -133,12 +133,12 @@ func (mu *MoveUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := mu.mutation.AddedCycle(); ok {
 		_spec.AddField(move.FieldCycle, field.TypeFloat64, value)
 	}
-	if mu.mutation.EventIDCleared() {
+	if mu.mutation.EventCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   move.EventIDTable,
-			Columns: move.EventIDPrimaryKey,
+			Table:   move.EventTable,
+			Columns: move.EventPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
@@ -146,12 +146,12 @@ func (mu *MoveUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := mu.mutation.RemovedEventIDIDs(); len(nodes) > 0 && !mu.mutation.EventIDCleared() {
+	if nodes := mu.mutation.RemovedEventIDs(); len(nodes) > 0 && !mu.mutation.EventCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   move.EventIDTable,
-			Columns: move.EventIDPrimaryKey,
+			Table:   move.EventTable,
+			Columns: move.EventPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
@@ -162,12 +162,12 @@ func (mu *MoveUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := mu.mutation.EventIDIDs(); len(nodes) > 0 {
+	if nodes := mu.mutation.EventIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   move.EventIDTable,
-			Columns: move.EventIDPrimaryKey,
+			Table:   move.EventTable,
+			Columns: move.EventPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
@@ -219,19 +219,19 @@ func (muo *MoveUpdateOne) AddCycle(f float64) *MoveUpdateOne {
 	return muo
 }
 
-// AddEventIDIDs adds the "event_id" edge to the Event entity by IDs.
-func (muo *MoveUpdateOne) AddEventIDIDs(ids ...uuid.UUID) *MoveUpdateOne {
-	muo.mutation.AddEventIDIDs(ids...)
+// AddEventIDs adds the "event" edge to the Event entity by IDs.
+func (muo *MoveUpdateOne) AddEventIDs(ids ...uuid.UUID) *MoveUpdateOne {
+	muo.mutation.AddEventIDs(ids...)
 	return muo
 }
 
-// AddEventID adds the "event_id" edges to the Event entity.
-func (muo *MoveUpdateOne) AddEventID(e ...*Event) *MoveUpdateOne {
+// AddEvent adds the "event" edges to the Event entity.
+func (muo *MoveUpdateOne) AddEvent(e ...*Event) *MoveUpdateOne {
 	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
-	return muo.AddEventIDIDs(ids...)
+	return muo.AddEventIDs(ids...)
 }
 
 // Mutation returns the MoveMutation object of the builder.
@@ -239,25 +239,25 @@ func (muo *MoveUpdateOne) Mutation() *MoveMutation {
 	return muo.mutation
 }
 
-// ClearEventID clears all "event_id" edges to the Event entity.
-func (muo *MoveUpdateOne) ClearEventID() *MoveUpdateOne {
-	muo.mutation.ClearEventID()
+// ClearEvent clears all "event" edges to the Event entity.
+func (muo *MoveUpdateOne) ClearEvent() *MoveUpdateOne {
+	muo.mutation.ClearEvent()
 	return muo
 }
 
-// RemoveEventIDIDs removes the "event_id" edge to Event entities by IDs.
-func (muo *MoveUpdateOne) RemoveEventIDIDs(ids ...uuid.UUID) *MoveUpdateOne {
-	muo.mutation.RemoveEventIDIDs(ids...)
+// RemoveEventIDs removes the "event" edge to Event entities by IDs.
+func (muo *MoveUpdateOne) RemoveEventIDs(ids ...uuid.UUID) *MoveUpdateOne {
+	muo.mutation.RemoveEventIDs(ids...)
 	return muo
 }
 
-// RemoveEventID removes "event_id" edges to Event entities.
-func (muo *MoveUpdateOne) RemoveEventID(e ...*Event) *MoveUpdateOne {
+// RemoveEvent removes "event" edges to Event entities.
+func (muo *MoveUpdateOne) RemoveEvent(e ...*Event) *MoveUpdateOne {
 	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
-	return muo.RemoveEventIDIDs(ids...)
+	return muo.RemoveEventIDs(ids...)
 }
 
 // Where appends a list predicates to the MoveUpdate builder.
@@ -332,12 +332,12 @@ func (muo *MoveUpdateOne) sqlSave(ctx context.Context) (_node *Move, err error) 
 	if value, ok := muo.mutation.AddedCycle(); ok {
 		_spec.AddField(move.FieldCycle, field.TypeFloat64, value)
 	}
-	if muo.mutation.EventIDCleared() {
+	if muo.mutation.EventCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   move.EventIDTable,
-			Columns: move.EventIDPrimaryKey,
+			Table:   move.EventTable,
+			Columns: move.EventPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
@@ -345,12 +345,12 @@ func (muo *MoveUpdateOne) sqlSave(ctx context.Context) (_node *Move, err error) 
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := muo.mutation.RemovedEventIDIDs(); len(nodes) > 0 && !muo.mutation.EventIDCleared() {
+	if nodes := muo.mutation.RemovedEventIDs(); len(nodes) > 0 && !muo.mutation.EventCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   move.EventIDTable,
-			Columns: move.EventIDPrimaryKey,
+			Table:   move.EventTable,
+			Columns: move.EventPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
@@ -361,12 +361,12 @@ func (muo *MoveUpdateOne) sqlSave(ctx context.Context) (_node *Move, err error) 
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := muo.mutation.EventIDIDs(); len(nodes) > 0 {
+	if nodes := muo.mutation.EventIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   move.EventIDTable,
-			Columns: move.EventIDPrimaryKey,
+			Table:   move.EventTable,
+			Columns: move.EventPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),

@@ -736,19 +736,19 @@ func (m *EventMutation) ResetEdge(name string) error {
 // InvaderMutation represents an operation that mutates the Invader nodes in the graph.
 type InvaderMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *uuid.UUID
-	picture         *[]byte
-	confidence      *float64
-	addconfidence   *float64
-	clearedFields   map[string]struct{}
-	event_id        map[uuid.UUID]struct{}
-	removedevent_id map[uuid.UUID]struct{}
-	clearedevent_id bool
-	done            bool
-	oldValue        func(context.Context) (*Invader, error)
-	predicates      []predicate.Invader
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	picture       *[]byte
+	confidence    *float64
+	addconfidence *float64
+	clearedFields map[string]struct{}
+	event         map[uuid.UUID]struct{}
+	removedevent  map[uuid.UUID]struct{}
+	clearedevent  bool
+	done          bool
+	oldValue      func(context.Context) (*Invader, error)
+	predicates    []predicate.Invader
 }
 
 var _ ent.Mutation = (*InvaderMutation)(nil)
@@ -947,58 +947,58 @@ func (m *InvaderMutation) ResetConfidence() {
 	m.addconfidence = nil
 }
 
-// AddEventIDIDs adds the "event_id" edge to the Event entity by ids.
-func (m *InvaderMutation) AddEventIDIDs(ids ...uuid.UUID) {
-	if m.event_id == nil {
-		m.event_id = make(map[uuid.UUID]struct{})
+// AddEventIDs adds the "event" edge to the Event entity by ids.
+func (m *InvaderMutation) AddEventIDs(ids ...uuid.UUID) {
+	if m.event == nil {
+		m.event = make(map[uuid.UUID]struct{})
 	}
 	for i := range ids {
-		m.event_id[ids[i]] = struct{}{}
+		m.event[ids[i]] = struct{}{}
 	}
 }
 
-// ClearEventID clears the "event_id" edge to the Event entity.
-func (m *InvaderMutation) ClearEventID() {
-	m.clearedevent_id = true
+// ClearEvent clears the "event" edge to the Event entity.
+func (m *InvaderMutation) ClearEvent() {
+	m.clearedevent = true
 }
 
-// EventIDCleared reports if the "event_id" edge to the Event entity was cleared.
-func (m *InvaderMutation) EventIDCleared() bool {
-	return m.clearedevent_id
+// EventCleared reports if the "event" edge to the Event entity was cleared.
+func (m *InvaderMutation) EventCleared() bool {
+	return m.clearedevent
 }
 
-// RemoveEventIDIDs removes the "event_id" edge to the Event entity by IDs.
-func (m *InvaderMutation) RemoveEventIDIDs(ids ...uuid.UUID) {
-	if m.removedevent_id == nil {
-		m.removedevent_id = make(map[uuid.UUID]struct{})
+// RemoveEventIDs removes the "event" edge to the Event entity by IDs.
+func (m *InvaderMutation) RemoveEventIDs(ids ...uuid.UUID) {
+	if m.removedevent == nil {
+		m.removedevent = make(map[uuid.UUID]struct{})
 	}
 	for i := range ids {
-		delete(m.event_id, ids[i])
-		m.removedevent_id[ids[i]] = struct{}{}
+		delete(m.event, ids[i])
+		m.removedevent[ids[i]] = struct{}{}
 	}
 }
 
-// RemovedEventID returns the removed IDs of the "event_id" edge to the Event entity.
-func (m *InvaderMutation) RemovedEventIDIDs() (ids []uuid.UUID) {
-	for id := range m.removedevent_id {
+// RemovedEvent returns the removed IDs of the "event" edge to the Event entity.
+func (m *InvaderMutation) RemovedEventIDs() (ids []uuid.UUID) {
+	for id := range m.removedevent {
 		ids = append(ids, id)
 	}
 	return
 }
 
-// EventIDIDs returns the "event_id" edge IDs in the mutation.
-func (m *InvaderMutation) EventIDIDs() (ids []uuid.UUID) {
-	for id := range m.event_id {
+// EventIDs returns the "event" edge IDs in the mutation.
+func (m *InvaderMutation) EventIDs() (ids []uuid.UUID) {
+	for id := range m.event {
 		ids = append(ids, id)
 	}
 	return
 }
 
-// ResetEventID resets all changes to the "event_id" edge.
-func (m *InvaderMutation) ResetEventID() {
-	m.event_id = nil
-	m.clearedevent_id = false
-	m.removedevent_id = nil
+// ResetEvent resets all changes to the "event" edge.
+func (m *InvaderMutation) ResetEvent() {
+	m.event = nil
+	m.clearedevent = false
+	m.removedevent = nil
 }
 
 // Where appends a list predicates to the InvaderMutation builder.
@@ -1167,8 +1167,8 @@ func (m *InvaderMutation) ResetField(name string) error {
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *InvaderMutation) AddedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.event_id != nil {
-		edges = append(edges, invader.EdgeEventID)
+	if m.event != nil {
+		edges = append(edges, invader.EdgeEvent)
 	}
 	return edges
 }
@@ -1177,9 +1177,9 @@ func (m *InvaderMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *InvaderMutation) AddedIDs(name string) []ent.Value {
 	switch name {
-	case invader.EdgeEventID:
-		ids := make([]ent.Value, 0, len(m.event_id))
-		for id := range m.event_id {
+	case invader.EdgeEvent:
+		ids := make([]ent.Value, 0, len(m.event))
+		for id := range m.event {
 			ids = append(ids, id)
 		}
 		return ids
@@ -1190,8 +1190,8 @@ func (m *InvaderMutation) AddedIDs(name string) []ent.Value {
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *InvaderMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.removedevent_id != nil {
-		edges = append(edges, invader.EdgeEventID)
+	if m.removedevent != nil {
+		edges = append(edges, invader.EdgeEvent)
 	}
 	return edges
 }
@@ -1200,9 +1200,9 @@ func (m *InvaderMutation) RemovedEdges() []string {
 // the given name in this mutation.
 func (m *InvaderMutation) RemovedIDs(name string) []ent.Value {
 	switch name {
-	case invader.EdgeEventID:
-		ids := make([]ent.Value, 0, len(m.removedevent_id))
-		for id := range m.removedevent_id {
+	case invader.EdgeEvent:
+		ids := make([]ent.Value, 0, len(m.removedevent))
+		for id := range m.removedevent {
 			ids = append(ids, id)
 		}
 		return ids
@@ -1213,8 +1213,8 @@ func (m *InvaderMutation) RemovedIDs(name string) []ent.Value {
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *InvaderMutation) ClearedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.clearedevent_id {
-		edges = append(edges, invader.EdgeEventID)
+	if m.clearedevent {
+		edges = append(edges, invader.EdgeEvent)
 	}
 	return edges
 }
@@ -1223,8 +1223,8 @@ func (m *InvaderMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *InvaderMutation) EdgeCleared(name string) bool {
 	switch name {
-	case invader.EdgeEventID:
-		return m.clearedevent_id
+	case invader.EdgeEvent:
+		return m.clearedevent
 	}
 	return false
 }
@@ -1241,8 +1241,8 @@ func (m *InvaderMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *InvaderMutation) ResetEdge(name string) error {
 	switch name {
-	case invader.EdgeEventID:
-		m.ResetEventID()
+	case invader.EdgeEvent:
+		m.ResetEvent()
 		return nil
 	}
 	return fmt.Errorf("unknown Invader edge %s", name)
@@ -1251,18 +1251,18 @@ func (m *InvaderMutation) ResetEdge(name string) error {
 // MoveMutation represents an operation that mutates the Move nodes in the graph.
 type MoveMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *uuid.UUID
-	cycle           *float64
-	addcycle        *float64
-	clearedFields   map[string]struct{}
-	event_id        map[uuid.UUID]struct{}
-	removedevent_id map[uuid.UUID]struct{}
-	clearedevent_id bool
-	done            bool
-	oldValue        func(context.Context) (*Move, error)
-	predicates      []predicate.Move
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	cycle         *float64
+	addcycle      *float64
+	clearedFields map[string]struct{}
+	event         map[uuid.UUID]struct{}
+	removedevent  map[uuid.UUID]struct{}
+	clearedevent  bool
+	done          bool
+	oldValue      func(context.Context) (*Move, error)
+	predicates    []predicate.Move
 }
 
 var _ ent.Mutation = (*MoveMutation)(nil)
@@ -1425,58 +1425,58 @@ func (m *MoveMutation) ResetCycle() {
 	m.addcycle = nil
 }
 
-// AddEventIDIDs adds the "event_id" edge to the Event entity by ids.
-func (m *MoveMutation) AddEventIDIDs(ids ...uuid.UUID) {
-	if m.event_id == nil {
-		m.event_id = make(map[uuid.UUID]struct{})
+// AddEventIDs adds the "event" edge to the Event entity by ids.
+func (m *MoveMutation) AddEventIDs(ids ...uuid.UUID) {
+	if m.event == nil {
+		m.event = make(map[uuid.UUID]struct{})
 	}
 	for i := range ids {
-		m.event_id[ids[i]] = struct{}{}
+		m.event[ids[i]] = struct{}{}
 	}
 }
 
-// ClearEventID clears the "event_id" edge to the Event entity.
-func (m *MoveMutation) ClearEventID() {
-	m.clearedevent_id = true
+// ClearEvent clears the "event" edge to the Event entity.
+func (m *MoveMutation) ClearEvent() {
+	m.clearedevent = true
 }
 
-// EventIDCleared reports if the "event_id" edge to the Event entity was cleared.
-func (m *MoveMutation) EventIDCleared() bool {
-	return m.clearedevent_id
+// EventCleared reports if the "event" edge to the Event entity was cleared.
+func (m *MoveMutation) EventCleared() bool {
+	return m.clearedevent
 }
 
-// RemoveEventIDIDs removes the "event_id" edge to the Event entity by IDs.
-func (m *MoveMutation) RemoveEventIDIDs(ids ...uuid.UUID) {
-	if m.removedevent_id == nil {
-		m.removedevent_id = make(map[uuid.UUID]struct{})
+// RemoveEventIDs removes the "event" edge to the Event entity by IDs.
+func (m *MoveMutation) RemoveEventIDs(ids ...uuid.UUID) {
+	if m.removedevent == nil {
+		m.removedevent = make(map[uuid.UUID]struct{})
 	}
 	for i := range ids {
-		delete(m.event_id, ids[i])
-		m.removedevent_id[ids[i]] = struct{}{}
+		delete(m.event, ids[i])
+		m.removedevent[ids[i]] = struct{}{}
 	}
 }
 
-// RemovedEventID returns the removed IDs of the "event_id" edge to the Event entity.
-func (m *MoveMutation) RemovedEventIDIDs() (ids []uuid.UUID) {
-	for id := range m.removedevent_id {
+// RemovedEvent returns the removed IDs of the "event" edge to the Event entity.
+func (m *MoveMutation) RemovedEventIDs() (ids []uuid.UUID) {
+	for id := range m.removedevent {
 		ids = append(ids, id)
 	}
 	return
 }
 
-// EventIDIDs returns the "event_id" edge IDs in the mutation.
-func (m *MoveMutation) EventIDIDs() (ids []uuid.UUID) {
-	for id := range m.event_id {
+// EventIDs returns the "event" edge IDs in the mutation.
+func (m *MoveMutation) EventIDs() (ids []uuid.UUID) {
+	for id := range m.event {
 		ids = append(ids, id)
 	}
 	return
 }
 
-// ResetEventID resets all changes to the "event_id" edge.
-func (m *MoveMutation) ResetEventID() {
-	m.event_id = nil
-	m.clearedevent_id = false
-	m.removedevent_id = nil
+// ResetEvent resets all changes to the "event" edge.
+func (m *MoveMutation) ResetEvent() {
+	m.event = nil
+	m.clearedevent = false
+	m.removedevent = nil
 }
 
 // Where appends a list predicates to the MoveMutation builder.
@@ -1628,8 +1628,8 @@ func (m *MoveMutation) ResetField(name string) error {
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *MoveMutation) AddedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.event_id != nil {
-		edges = append(edges, move.EdgeEventID)
+	if m.event != nil {
+		edges = append(edges, move.EdgeEvent)
 	}
 	return edges
 }
@@ -1638,9 +1638,9 @@ func (m *MoveMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *MoveMutation) AddedIDs(name string) []ent.Value {
 	switch name {
-	case move.EdgeEventID:
-		ids := make([]ent.Value, 0, len(m.event_id))
-		for id := range m.event_id {
+	case move.EdgeEvent:
+		ids := make([]ent.Value, 0, len(m.event))
+		for id := range m.event {
 			ids = append(ids, id)
 		}
 		return ids
@@ -1651,8 +1651,8 @@ func (m *MoveMutation) AddedIDs(name string) []ent.Value {
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *MoveMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.removedevent_id != nil {
-		edges = append(edges, move.EdgeEventID)
+	if m.removedevent != nil {
+		edges = append(edges, move.EdgeEvent)
 	}
 	return edges
 }
@@ -1661,9 +1661,9 @@ func (m *MoveMutation) RemovedEdges() []string {
 // the given name in this mutation.
 func (m *MoveMutation) RemovedIDs(name string) []ent.Value {
 	switch name {
-	case move.EdgeEventID:
-		ids := make([]ent.Value, 0, len(m.removedevent_id))
-		for id := range m.removedevent_id {
+	case move.EdgeEvent:
+		ids := make([]ent.Value, 0, len(m.removedevent))
+		for id := range m.removedevent {
 			ids = append(ids, id)
 		}
 		return ids
@@ -1674,8 +1674,8 @@ func (m *MoveMutation) RemovedIDs(name string) []ent.Value {
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *MoveMutation) ClearedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.clearedevent_id {
-		edges = append(edges, move.EdgeEventID)
+	if m.clearedevent {
+		edges = append(edges, move.EdgeEvent)
 	}
 	return edges
 }
@@ -1684,8 +1684,8 @@ func (m *MoveMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *MoveMutation) EdgeCleared(name string) bool {
 	switch name {
-	case move.EdgeEventID:
-		return m.clearedevent_id
+	case move.EdgeEvent:
+		return m.clearedevent
 	}
 	return false
 }
@@ -1702,8 +1702,8 @@ func (m *MoveMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *MoveMutation) ResetEdge(name string) error {
 	switch name {
-	case move.EdgeEventID:
-		m.ResetEventID()
+	case move.EdgeEvent:
+		m.ResetEvent()
 		return nil
 	}
 	return fmt.Errorf("unknown Move edge %s", name)
@@ -1712,17 +1712,17 @@ func (m *MoveMutation) ResetEdge(name string) error {
 // MovementMutation represents an operation that mutates the Movement nodes in the graph.
 type MovementMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *uuid.UUID
-	picture         *[]byte
-	clearedFields   map[string]struct{}
-	event_id        map[uuid.UUID]struct{}
-	removedevent_id map[uuid.UUID]struct{}
-	clearedevent_id bool
-	done            bool
-	oldValue        func(context.Context) (*Movement, error)
-	predicates      []predicate.Movement
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	picture       *[]byte
+	clearedFields map[string]struct{}
+	event         map[uuid.UUID]struct{}
+	removedevent  map[uuid.UUID]struct{}
+	clearedevent  bool
+	done          bool
+	oldValue      func(context.Context) (*Movement, error)
+	predicates    []predicate.Movement
 }
 
 var _ ent.Mutation = (*MovementMutation)(nil)
@@ -1865,58 +1865,58 @@ func (m *MovementMutation) ResetPicture() {
 	m.picture = nil
 }
 
-// AddEventIDIDs adds the "event_id" edge to the Event entity by ids.
-func (m *MovementMutation) AddEventIDIDs(ids ...uuid.UUID) {
-	if m.event_id == nil {
-		m.event_id = make(map[uuid.UUID]struct{})
+// AddEventIDs adds the "event" edge to the Event entity by ids.
+func (m *MovementMutation) AddEventIDs(ids ...uuid.UUID) {
+	if m.event == nil {
+		m.event = make(map[uuid.UUID]struct{})
 	}
 	for i := range ids {
-		m.event_id[ids[i]] = struct{}{}
+		m.event[ids[i]] = struct{}{}
 	}
 }
 
-// ClearEventID clears the "event_id" edge to the Event entity.
-func (m *MovementMutation) ClearEventID() {
-	m.clearedevent_id = true
+// ClearEvent clears the "event" edge to the Event entity.
+func (m *MovementMutation) ClearEvent() {
+	m.clearedevent = true
 }
 
-// EventIDCleared reports if the "event_id" edge to the Event entity was cleared.
-func (m *MovementMutation) EventIDCleared() bool {
-	return m.clearedevent_id
+// EventCleared reports if the "event" edge to the Event entity was cleared.
+func (m *MovementMutation) EventCleared() bool {
+	return m.clearedevent
 }
 
-// RemoveEventIDIDs removes the "event_id" edge to the Event entity by IDs.
-func (m *MovementMutation) RemoveEventIDIDs(ids ...uuid.UUID) {
-	if m.removedevent_id == nil {
-		m.removedevent_id = make(map[uuid.UUID]struct{})
+// RemoveEventIDs removes the "event" edge to the Event entity by IDs.
+func (m *MovementMutation) RemoveEventIDs(ids ...uuid.UUID) {
+	if m.removedevent == nil {
+		m.removedevent = make(map[uuid.UUID]struct{})
 	}
 	for i := range ids {
-		delete(m.event_id, ids[i])
-		m.removedevent_id[ids[i]] = struct{}{}
+		delete(m.event, ids[i])
+		m.removedevent[ids[i]] = struct{}{}
 	}
 }
 
-// RemovedEventID returns the removed IDs of the "event_id" edge to the Event entity.
-func (m *MovementMutation) RemovedEventIDIDs() (ids []uuid.UUID) {
-	for id := range m.removedevent_id {
+// RemovedEvent returns the removed IDs of the "event" edge to the Event entity.
+func (m *MovementMutation) RemovedEventIDs() (ids []uuid.UUID) {
+	for id := range m.removedevent {
 		ids = append(ids, id)
 	}
 	return
 }
 
-// EventIDIDs returns the "event_id" edge IDs in the mutation.
-func (m *MovementMutation) EventIDIDs() (ids []uuid.UUID) {
-	for id := range m.event_id {
+// EventIDs returns the "event" edge IDs in the mutation.
+func (m *MovementMutation) EventIDs() (ids []uuid.UUID) {
+	for id := range m.event {
 		ids = append(ids, id)
 	}
 	return
 }
 
-// ResetEventID resets all changes to the "event_id" edge.
-func (m *MovementMutation) ResetEventID() {
-	m.event_id = nil
-	m.clearedevent_id = false
-	m.removedevent_id = nil
+// ResetEvent resets all changes to the "event" edge.
+func (m *MovementMutation) ResetEvent() {
+	m.event = nil
+	m.clearedevent = false
+	m.removedevent = nil
 }
 
 // Where appends a list predicates to the MovementMutation builder.
@@ -2053,8 +2053,8 @@ func (m *MovementMutation) ResetField(name string) error {
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *MovementMutation) AddedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.event_id != nil {
-		edges = append(edges, movement.EdgeEventID)
+	if m.event != nil {
+		edges = append(edges, movement.EdgeEvent)
 	}
 	return edges
 }
@@ -2063,9 +2063,9 @@ func (m *MovementMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *MovementMutation) AddedIDs(name string) []ent.Value {
 	switch name {
-	case movement.EdgeEventID:
-		ids := make([]ent.Value, 0, len(m.event_id))
-		for id := range m.event_id {
+	case movement.EdgeEvent:
+		ids := make([]ent.Value, 0, len(m.event))
+		for id := range m.event {
 			ids = append(ids, id)
 		}
 		return ids
@@ -2076,8 +2076,8 @@ func (m *MovementMutation) AddedIDs(name string) []ent.Value {
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *MovementMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.removedevent_id != nil {
-		edges = append(edges, movement.EdgeEventID)
+	if m.removedevent != nil {
+		edges = append(edges, movement.EdgeEvent)
 	}
 	return edges
 }
@@ -2086,9 +2086,9 @@ func (m *MovementMutation) RemovedEdges() []string {
 // the given name in this mutation.
 func (m *MovementMutation) RemovedIDs(name string) []ent.Value {
 	switch name {
-	case movement.EdgeEventID:
-		ids := make([]ent.Value, 0, len(m.removedevent_id))
-		for id := range m.removedevent_id {
+	case movement.EdgeEvent:
+		ids := make([]ent.Value, 0, len(m.removedevent))
+		for id := range m.removedevent {
 			ids = append(ids, id)
 		}
 		return ids
@@ -2099,8 +2099,8 @@ func (m *MovementMutation) RemovedIDs(name string) []ent.Value {
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *MovementMutation) ClearedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.clearedevent_id {
-		edges = append(edges, movement.EdgeEventID)
+	if m.clearedevent {
+		edges = append(edges, movement.EdgeEvent)
 	}
 	return edges
 }
@@ -2109,8 +2109,8 @@ func (m *MovementMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *MovementMutation) EdgeCleared(name string) bool {
 	switch name {
-	case movement.EdgeEventID:
-		return m.clearedevent_id
+	case movement.EdgeEvent:
+		return m.clearedevent
 	}
 	return false
 }
@@ -2127,8 +2127,8 @@ func (m *MovementMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *MovementMutation) ResetEdge(name string) error {
 	switch name {
-	case movement.EdgeEventID:
-		m.ResetEventID()
+	case movement.EdgeEvent:
+		m.ResetEvent()
 		return nil
 	}
 	return fmt.Errorf("unknown Movement edge %s", name)

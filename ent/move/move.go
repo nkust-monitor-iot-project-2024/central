@@ -14,15 +14,15 @@ const (
 	FieldID = "id"
 	// FieldCycle holds the string denoting the cycle field in the database.
 	FieldCycle = "cycle"
-	// EdgeEventID holds the string denoting the event_id edge name in mutations.
-	EdgeEventID = "event_id"
+	// EdgeEvent holds the string denoting the event edge name in mutations.
+	EdgeEvent = "event"
 	// Table holds the table name of the move in the database.
 	Table = "moves"
-	// EventIDTable is the table that holds the event_id relation/edge. The primary key declared below.
-	EventIDTable = "event_moves"
-	// EventIDInverseTable is the table name for the Event entity.
+	// EventTable is the table that holds the event relation/edge. The primary key declared below.
+	EventTable = "event_moves"
+	// EventInverseTable is the table name for the Event entity.
 	// It exists in this package in order to avoid circular dependency with the "event" package.
-	EventIDInverseTable = "events"
+	EventInverseTable = "events"
 )
 
 // Columns holds all SQL columns for move fields.
@@ -32,9 +32,9 @@ var Columns = []string{
 }
 
 var (
-	// EventIDPrimaryKey and EventIDColumn2 are the table columns denoting the
-	// primary key for the event_id relation (M2M).
-	EventIDPrimaryKey = []string{"event_id", "move_id"}
+	// EventPrimaryKey and EventColumn2 are the table columns denoting the
+	// primary key for the event relation (M2M).
+	EventPrimaryKey = []string{"event_id", "move_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -60,23 +60,23 @@ func ByCycle(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCycle, opts...).ToFunc()
 }
 
-// ByEventIDCount orders the results by event_id count.
-func ByEventIDCount(opts ...sql.OrderTermOption) OrderOption {
+// ByEventCount orders the results by event count.
+func ByEventCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newEventIDStep(), opts...)
+		sqlgraph.OrderByNeighborsCount(s, newEventStep(), opts...)
 	}
 }
 
-// ByEventID orders the results by event_id terms.
-func ByEventID(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+// ByEvent orders the results by event terms.
+func ByEvent(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newEventIDStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newEventStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
-func newEventIDStep() *sqlgraph.Step {
+func newEventStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(EventIDInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, true, EventIDTable, EventIDPrimaryKey...),
+		sqlgraph.To(EventInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, EventTable, EventPrimaryKey...),
 	)
 }

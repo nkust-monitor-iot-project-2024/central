@@ -23,6 +23,6 @@ func (Move) Fields() []ent.Field {
 // Edges of the Move.
 func (Move) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("event_id", Event.Type).Ref("moves").Required(),
+		edge.From("event", Event.Type).Ref("moves").Required(),
 	}
 }

@@ -33,19 +33,19 @@ func (mc *MovementCreate) SetID(u uuid.UUID) *MovementCreate {
 	return mc
 }
 
-// AddEventIDIDs adds the "event_id" edge to the Event entity by IDs.
-func (mc *MovementCreate) AddEventIDIDs(ids ...uuid.UUID) *MovementCreate {
-	mc.mutation.AddEventIDIDs(ids...)
+// AddEventIDs adds the "event" edge to the Event entity by IDs.
+func (mc *MovementCreate) AddEventIDs(ids ...uuid.UUID) *MovementCreate {
+	mc.mutation.AddEventIDs(ids...)
 	return mc
 }
 
-// AddEventID adds the "event_id" edges to the Event entity.
-func (mc *MovementCreate) AddEventID(e ...*Event) *MovementCreate {
+// AddEvent adds the "event" edges to the Event entity.
+func (mc *MovementCreate) AddEvent(e ...*Event) *MovementCreate {
 	ids := make([]uuid.UUID, len(e))
 	for i := range e {
 		ids[i] = e[i].ID
 	}
-	return mc.AddEventIDIDs(ids...)
+	return mc.AddEventIDs(ids...)
 }
 
 // Mutation returns the MovementMutation object of the builder.
@@ -85,8 +85,8 @@ func (mc *MovementCreate) check() error {
 	if _, ok := mc.mutation.Picture(); !ok {
 		return &ValidationError{Name: "picture", err: errors.New(`ent: missing required field "Movement.picture"`)}
 	}
-	if len(mc.mutation.EventIDIDs()) == 0 {
-		return &ValidationError{Name: "event_id", err: errors.New(`ent: missing required edge "Movement.event_id"`)}
+	if len(mc.mutation.EventIDs()) == 0 {
+		return &ValidationError{Name: "event", err: errors.New(`ent: missing required edge "Movement.event"`)}
 	}
 	return nil
 }
@@ -127,12 +127,12 @@ func (mc *MovementCreate) createSpec() (*Movement, *sqlgraph.CreateSpec) {
 		_spec.SetField(movement.FieldPicture, field.TypeBytes, value)
 		_node.Picture = value
 	}
-	if nodes := mc.mutation.EventIDIDs(); len(nodes) > 0 {
+	if nodes := mc.mutation.EventIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   movement.EventIDTable,
-			Columns: movement.EventIDPrimaryKey,
+			Table:   movement.EventTable,
+			Columns: movement.EventPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(event.FieldID, field.TypeUUID),
