@@ -21,51 +21,6 @@ func main() {
 		panic("rabbitmq address is not set")
 	}
 
-	conn, err := amqp091.Dial(amqpAddress)
-	if err != nil {
-		panic(fmt.Errorf("connect to rabbitmq: %w", err))
-	}
-
-	ch, err := conn.Channel()
-	if err != nil {
-		panic(fmt.Errorf("open channel: %w", err))
-	}
-
-	err = ch.ExchangeDeclare(
-		"events_topic",
-		"topic",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		panic(fmt.Errorf("declare exchange: %w", err))
-	}
-
-	queue, err := ch.QueueDeclare(
-		"",
-		false,
-		true,
-		true,
-		false,
-		nil,
-	)
-	if err != nil {
-		panic(fmt.Errorf("declare queue: %w", err))
-	}
-
-	err = ch.QueueBind(
-		queue.Name,
-		"event.v1.movement",
-		"events_topic",
-		false,
-		nil)
-	if err != nil {
-		panic(fmt.Errorf("bind queue: %w", err))
-	}
-
 	marshalledBody, err := protojson.Marshal(&eventpb.EventMessage{
 		Event: &eventpb.EventMessage_MovementInfo{
 			MovementInfo: &eventpb.MovementInfo{
@@ -80,29 +35,60 @@ func main() {
 	wg := sync.WaitGroup{}
 	wg.Add(100)
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10; i++ {
 		go func() {
 			defer wg.Done()
 
-			err = ch.Publish("events_topic", "event.v1.movement", false, false, amqp091.Publishing{
-				Headers:       nil,
-				ContentType:   "application/json",
-				DeliveryMode:  0,
-				Priority:      0,
-				CorrelationId: "",
-				ReplyTo:       "",
-				Expiration:    "",
-				MessageId:     uuid.New().String(),
-				Timestamp:     time.Now(),
-				Type:          "eventpb.EventMessage",
-				UserId:        "",
-				AppId:         "central/example/emit-event",
-				Body:          marshalledBody,
-			})
+			conn, err := amqp091.Dial(amqpAddress)
 			if err != nil {
-				log.Println(fmt.Errorf("publish message: %w", err))
+				panic(fmt.Errorf("connect to rabbitmq: %w", err))
 			}
-			fmt.Println("Event emitted", i)
+			defer func() {
+				_ = conn.Close()
+			}()
+
+			ch, err := conn.Channel()
+			if err != nil {
+				panic(fmt.Errorf("open channel: %w", err))
+			}
+			defer func(ch *amqp091.Channel) {
+				_ = ch.Close()
+			}(ch)
+
+			err = ch.ExchangeDeclare(
+				"events_topic",
+				"topic",
+				true,
+				false,
+				false,
+				false,
+				nil,
+			)
+			if err != nil {
+				panic(fmt.Errorf("declare exchange: %w", err))
+			}
+
+			for j := 0; j < 10; j++ {
+				err = ch.Publish("events_topic", "event.v1.movement", false, false, amqp091.Publishing{
+					Headers:       nil,
+					ContentType:   "application/json",
+					DeliveryMode:  0,
+					Priority:      0,
+					CorrelationId: "",
+					ReplyTo:       "",
+					Expiration:    "",
+					MessageId:     uuid.New().String(),
+					Timestamp:     time.Now(),
+					Type:          "eventpb.EventMessage",
+					UserId:        "",
+					AppId:         "central/example/emit-event",
+					Body:          marshalledBody,
+				})
+				if err != nil {
+					log.Println(fmt.Errorf("publish message: %w", err))
+				}
+				fmt.Println("Event emitted", i, j)
+			}
 		}()
 	}
 
