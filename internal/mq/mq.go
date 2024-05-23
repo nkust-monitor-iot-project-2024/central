@@ -9,7 +9,10 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/fx"
 )
+
+var FxModule = fx.Module("amqp-mq", fx.Provide(ConnectAmqp))
 
 type MessageQueue interface {
 	EventSubscriber

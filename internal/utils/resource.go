@@ -2,16 +2,13 @@ package utils
 
 import (
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
-func MustNewResource(serviceName string, serviceVersion string) *resource.Resource {
-	res, err := NewResource(serviceName, serviceVersion)
-	if err != nil {
-		panic(err)
+func NewResourceBuilder(serviceName string, serviceVersion string) func() (*resource.Resource, error) {
+	return func() (*resource.Resource, error) {
+		return NewResource(serviceName, serviceVersion)
 	}
-
-	return res
 }
 
 func NewResource(serviceName string, serviceVersion string) (*resource.Resource, error) {

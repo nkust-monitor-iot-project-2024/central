@@ -3,6 +3,7 @@ package telemetry
 import (
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"go.opentelemetry.io/otel/sdk/resource"
+	"go.uber.org/fx"
 )
 
 // OpenTelemetry module.
@@ -39,7 +40,29 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
-func SetupOTelSDK(ctx context.Context, config utils.Config, resource *resource.Resource) (shutdown func(context.Context) error, err error) {
+var FxModule = fx.Module(
+	"otel",
+	fx.Invoke(func(lifecycle fx.Lifecycle, config utils.Config, resource *resource.Resource) error {
+		shutdown, err := SetupOTelSDK(config, resource)
+		if err != nil {
+			return err
+		}
+
+		lifecycle.Append(fx.Hook{
+			OnStop: func(ctx context.Context) error {
+				return shutdown(ctx)
+			},
+		})
+
+		return nil
+	}),
+)
+
+type OtelShutdownFn func(context.Context) error
+
+func SetupOTelSDK(config utils.Config, resource *resource.Resource) (shutdown OtelShutdownFn, err error) {
+	ctx := context.Background()
+
 	var shutdownFuncs []func(context.Context) error
 
 	// shutdown calls cleanup functions registered via shutdownFuncs.
