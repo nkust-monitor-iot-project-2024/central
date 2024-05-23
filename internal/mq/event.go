@@ -13,6 +13,7 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
 	"github.com/rabbitmq/amqp091-go"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -112,16 +113,6 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 
 	// handle raw messages
 	go func() {
-		ctx, span := mq.tracer.Start(ctx, "subscribe_event/handle_raw_messages")
-		defer span.End()
-
-		span.AddEvent("start handling raw messages")
-
-		defer func() {
-			span.AddEvent("cleaning up the resource")
-			close(eventsCh)
-		}()
-
 		wg := sync.WaitGroup{}
 
 		for {
@@ -138,6 +129,11 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 
 			wg.Add(1)
 			go func() {
+				ctx, span := mq.tracer.Start(ctx, "subscribe_event/handle_raw_message", trace.WithAttributes(
+					attribute.String("message_id", rawMessage.MessageId),
+				))
+				defer span.End()
+
 				defer wg.Done()
 
 				if err := mq.handleRawMessage(ctx, rawMessage, eventsCh); err != nil {
@@ -154,8 +150,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 		}
 
 		wg.Wait()
-
-		span.AddEvent("finished handling raw messages")
+		close(eventsCh)
 	}()
 
 	return eventsCh, nil
