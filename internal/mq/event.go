@@ -40,7 +40,7 @@ type TraceableTypedDelivery[M any, B any] struct {
 
 // SubscribeEvent subscribes to the event messages.
 func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], error) {
-	ctx, span := mq.tracer.Start(ctx, "subscribe_event")
+	_, span := mq.tracer.Start(ctx, "subscribe_event")
 	defer span.End()
 
 	span.AddEvent("prepare AMQP queue")
