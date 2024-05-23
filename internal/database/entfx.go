@@ -12,12 +12,37 @@ import (
 )
 
 var EntFx = fx.Module("ent", fx.Provide(func(lifecycle fx.Lifecycle, config utils.Config) (*ent.Client, error) {
-	dataSourceName := config.String("postgres.dataSourceName")
-	if dataSourceName == "" {
-		return nil, errors.New("postgres.dataSourceName is required")
+	host := config.String("postgres.host")
+	if host == "" {
+		return nil, errors.New("postgres.host is required")
 	}
 
-	client, err := ent.Open(dialect.Postgres, dataSourceName)
+	port := config.String("postgres.port")
+	if port == "" {
+		port = "5432"
+	}
+
+	user := config.String("postgres.user")
+	if user == "" {
+		return nil, errors.New("postgres.user is required")
+	}
+
+	password := config.String("postgres.password")
+	if password == "" {
+		return nil, errors.New("postgres.password is required")
+	}
+
+	dbname := config.String("postgres.dbname")
+	if dbname == "" {
+		return nil, errors.New("postgres.dbname is required")
+	}
+
+	sslmode := config.String("postgres.sslmode")
+	if sslmode == "" {
+		sslmode = "disable"
+	}
+
+	client, err := ent.Open(dialect.Postgres, fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s", host, port, user, password, dbname, sslmode))
 	if err != nil {
 		return nil, fmt.Errorf("open connection to postgres: %w", err)
 	}
