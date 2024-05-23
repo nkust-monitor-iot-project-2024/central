@@ -2,18 +2,13 @@ package mq
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel"
-)
-
-const name = "mq"
-
-var (
-	propagator = otel.GetTextMapPropagator()
-	tracer     = otel.Tracer(name)
-	logger     = utils.NewLogger(name)
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type MessageQueue interface {
@@ -22,12 +17,22 @@ type MessageQueue interface {
 
 type amqpMQ struct {
 	channel *amqp091.Channel
+
+	propagator propagation.TextMapPropagator
+	tracer     trace.Tracer
+	logger     *slog.Logger
 }
 
 func ConnectAmqp(config utils.Config) (MessageQueue, error) {
+	const name = "amqpMQ"
+
+	propagator := otel.GetTextMapPropagator()
+	tracer := otel.GetTracerProvider().Tracer(name)
+	logger := utils.NewLogger(name)
+
 	amqpAddress := config.String("mq.address")
 	if amqpAddress == "" {
-		panic("rabbitmq address is not set")
+		return nil, fmt.Errorf("rabbitmq address is not set")
 	}
 
 	conn, err := amqp091.Dial(amqpAddress)
@@ -41,6 +46,9 @@ func ConnectAmqp(config utils.Config) (MessageQueue, error) {
 	}
 
 	return &amqpMQ{
-		channel: ch,
+		channel:    ch,
+		propagator: propagator,
+		tracer:     tracer,
+		logger:     logger,
 	}, nil
 }

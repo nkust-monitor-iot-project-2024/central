@@ -15,10 +15,6 @@ func (m *MessageCarrier) Get(key string) string {
 		return v
 	}
 
-	if key == "request_id" {
-		logger.Warn("request_id is not provided!")
-	}
-
 	return ""
 }
 
@@ -28,11 +24,12 @@ func (m *MessageCarrier) Set(key string, value string) {
 
 func (m *MessageCarrier) Keys() []string {
 	return []string{
-		"request_id",
+		"event_id",
+		"device_id",
 	}
 }
 
-func NewMessageCarrier(header amqp091.Table) *MessageCarrier {
+func NewMessageHeaderCarrier(header amqp091.Table) *MessageCarrier {
 	return &MessageCarrier{
 		Header: header,
 	}
