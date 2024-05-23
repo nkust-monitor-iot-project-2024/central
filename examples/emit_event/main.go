@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -75,24 +77,34 @@ func main() {
 		panic(fmt.Errorf("marshal event message: %w", err))
 	}
 
-	err = ch.Publish("events_topic", "event.v1.movement", false, false, amqp091.Publishing{
-		Headers:       nil,
-		ContentType:   "application/json",
-		DeliveryMode:  0,
-		Priority:      0,
-		CorrelationId: "",
-		ReplyTo:       "",
-		Expiration:    "",
-		MessageId:     uuid.New().String(),
-		Timestamp:     time.Now(),
-		Type:          "eventpb.EventMessage",
-		UserId:        "",
-		AppId:         "central/example/emit-event",
-		Body:          marshalledBody,
-	})
-	if err != nil {
-		panic(fmt.Errorf("publish message: %w", err))
+	wg := sync.WaitGroup{}
+	wg.Add(100)
+
+	for i := 0; i < 100; i++ {
+		go func() {
+			defer wg.Done()
+
+			err = ch.Publish("events_topic", "event.v1.movement", false, false, amqp091.Publishing{
+				Headers:       nil,
+				ContentType:   "application/json",
+				DeliveryMode:  0,
+				Priority:      0,
+				CorrelationId: "",
+				ReplyTo:       "",
+				Expiration:    "",
+				MessageId:     uuid.New().String(),
+				Timestamp:     time.Now(),
+				Type:          "eventpb.EventMessage",
+				UserId:        "",
+				AppId:         "central/example/emit-event",
+				Body:          marshalledBody,
+			})
+			if err != nil {
+				log.Println(fmt.Errorf("publish message: %w", err))
+			}
+			fmt.Println("Event emitted", i)
+		}()
 	}
 
-	fmt.Println("Event emitted")
+	wg.Wait()
 }
