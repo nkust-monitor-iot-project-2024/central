@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/otelattrext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
@@ -108,7 +109,11 @@ func (s *Storer) storeMovementEvent(ctx context.Context, movementInfo *eventpb.M
 		trace.WithAttributes(otelattrext.UUID("event_id", eventModel.ID)))
 
 	span.AddEvent("create movement information in database")
-	movementModel, err := s.client.Movement.Create().AddEvent(eventModel).SetPicture(movementInfo.GetPicture()).Save(ctx)
+	movementModel, err := s.client.Movement.Create().
+		AddEvent(eventModel).
+		SetID(uuid.Must(uuid.NewV7())).
+		SetPicture(movementInfo.GetPicture()).
+		Save(ctx)
 	if err != nil {
 		span.SetStatus(codes.Error, "failed to create movement information in database")
 		span.RecordError(err)
