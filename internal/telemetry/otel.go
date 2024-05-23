@@ -7,31 +7,14 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.uber.org/fx"
-)
 
-// OpenTelemetry module.
-//
-// telemetry.endpoint.[[metric|trace|log].][grpc|http] - The endpoint to send telemetry data to.
-// If not specified, the data will be sent to stdout.
-//
-// For example,
-//
-// telemetry.endpoint.metric.http = "localhost:1234"
-//							  	will send metrics to the specified HTTP endpoint.
-// telemetry.endpoint.grpc = "localhost:2345"
-//							   	will send all telemetry data (if not overridden by [metric|trace|log])
-// 							   	to the specified gRPC endpoint.
-
-import (
 	"context"
 	"errors"
 	"fmt"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
@@ -155,26 +138,6 @@ func newTraceProvider(ctx context.Context, config utils.Config, serviceResource 
 			return exporter, nil
 		}
 
-		for _, k := range []string{"trace.grpc", "grpc"} {
-			if v := endpointConfig.String(k); v != "" {
-				exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithEndpointURL(v))
-				if err != nil {
-					return nil, fmt.Errorf("set gRPC endpoint %q: %w", v, err)
-				}
-				return exporter, nil
-			}
-		}
-
-		for _, k := range []string{"trace.http", "http"} {
-			if v := endpointConfig.String(k); v != "" {
-				exporter, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(v))
-				if err != nil {
-					return nil, fmt.Errorf("set HTTP endpoint %q: %w", v, err)
-				}
-				return exporter, nil
-			}
-		}
-
 		stdoutExporter, err := stdouttrace.New(
 			stdouttrace.WithPrettyPrint())
 		if err != nil {
@@ -216,26 +179,6 @@ func newMeterProvider(ctx context.Context, config utils.Config, serviceResource 
 			return exporter, nil
 		}
 
-		for _, k := range []string{"metric.grpc", "grpc"} {
-			if v := endpointConfig.String(k); v != "" {
-				exporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithEndpointURL(v))
-				if err != nil {
-					return nil, fmt.Errorf("set gRPC endpoint %q: %w", v, err)
-				}
-				return exporter, nil
-			}
-		}
-
-		for _, k := range []string{"metric.http", "http"} {
-			if v := endpointConfig.String(k); v != "" {
-				exporter, err := otlpmetrichttp.New(ctx, otlpmetrichttp.WithEndpointURL(v))
-				if err != nil {
-					return nil, fmt.Errorf("set HTTP endpoint %q: %w", v, err)
-				}
-				return exporter, nil
-			}
-		}
-
 		stdoutExporter, err := stdoutmetric.New(
 			stdoutmetric.WithPrettyPrint())
 		if err != nil {
@@ -275,16 +218,6 @@ func newLoggerProvider(ctx context.Context, config utils.Config, serviceResource
 			}
 
 			return exporter, nil
-		}
-
-		for _, k := range []string{"log.http", "http"} {
-			if v := endpointConfig.String(k); v != "" {
-				exporter, err := otlploghttp.New(ctx, otlploghttp.WithEndpointURL(v))
-				if err != nil {
-					return nil, fmt.Errorf("set HTTP endpoint %q: %w", v, err)
-				}
-				return exporter, nil
-			}
 		}
 
 		stdoutExporter, err := stdoutlog.New(
