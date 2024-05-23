@@ -3,20 +3,13 @@ syntax = "proto3";
 package eventpb;
 option go_package = "github.com/nkust-monitor-iot-project-2024/central/protos/eventpb";
 
-import "google/protobuf/timestamp.proto";
-
-message Metadata {
-    string event_id = 1;
-    string device_id = 2;
-    google.protobuf.Timestamp emitted_at = 3;
-}
-
 message MovementInfo {
     bytes picture = 2;
 }
 
 message EventMessage {
-    Metadata metadata = 1;
+    reserved 1;   // metadata
+
     oneof event {
         MovementInfo movement_info = 2;
     }

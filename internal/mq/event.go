@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
+	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
 	"github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel/codes"
@@ -15,13 +16,16 @@ type EventSubscriber interface {
 	SubscribeEvent(ctx context.Context) (<-chan *eventpb.EventMessage, error)
 }
 
-type TypedDelivery[T any] struct {
+// TypedDelivery is a wrapper around amqp091.Delivery that includes the typed metadata and body.
+type TypedDelivery[M any, B any] struct {
 	amqp091.Delivery
 
-	Body T
+	Metadata M
+	Body     B
 }
 
-func (mq *amqpMQ) SubscribeEvent(parentCtx context.Context) (<-chan *eventpb.EventMessage, error) {
+// SubscribeEvent subscribes to the event messages.
+func (mq *amqpMQ) SubscribeEvent(parentCtx context.Context) (<-chan TypedDelivery[models.Metadata, *eventpb.EventMessage], error) {
 	ctx, span := tracer.Start(parentCtx, "mq.SubscribeEvent")
 	defer span.End()
 
@@ -93,11 +97,9 @@ func (mq *amqpMQ) SubscribeEvent(parentCtx context.Context) (<-chan *eventpb.Eve
 	}
 	span.AddEvent("prepared the raw channel")
 
-	eventsCh := make(chan *eventpb.EventMessage)
+	eventsCh := make(chan TypedDelivery[models.Metadata, *eventpb.EventMessage])
 	go func() {
 		defer close(eventsCh)
-
-		// find the request id; if none, we set one.
 
 		for rawMessage := range rawMessageCh {
 			var event *eventpb.EventMessage

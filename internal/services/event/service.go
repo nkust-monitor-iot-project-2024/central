@@ -5,15 +5,24 @@ import (
 	"sync"
 
 	"github.com/nkust-monitor-iot-project-2024/central/ent"
+	"go.uber.org/fx"
+)
+
+var FxModule = fx.Module(
+	"services/event",
+	fx.Provide(NewStorer),
+	fx.Provide(New),
 )
 
 type Service struct {
 	client *ent.Client
+	storer *Storer
 }
 
-func New(client *ent.Client) *Service {
+func New(client *ent.Client, storer *Storer) *Service {
 	return &Service{
 		client: client,
+		storer: storer,
 	}
 }
 
@@ -23,7 +32,7 @@ func (s *Service) Run() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		s.storeEventsTask(context.Background(), nil /* wip */)
+		s.storer.Run(context.Background(), nil /* wip */)
 	}()
 
 	wg.Wait()
