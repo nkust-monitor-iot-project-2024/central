@@ -27,6 +27,9 @@ type mockEvent struct {
 func (m mockEvent) GetEventID() uuid.UUID {
 	return m.eventID
 }
+func (m mockEvent) GetDeviceID() string {
+	return "my-device"
+}
 func (m mockEvent) GetEmittedAt() time.Time {
 	return time.Now()
 }
