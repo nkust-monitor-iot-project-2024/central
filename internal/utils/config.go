@@ -24,8 +24,10 @@ type Config struct {
 func NewConfig(initLogger *slog.Logger) Config {
 	conf := koanf.New(".")
 
+	parser := NewEnvInterpolation(toml.Parser())
+
 	// Docker friendly
-	err := conf.Load(file.Provider("/etc/iotmonitor/config.toml"), toml.Parser())
+	err := conf.Load(file.Provider("/etc/iotmonitor/config.toml"), parser)
 	if err != nil {
 		initLogger.Debug(
 			"cannot find config file from /etc",
@@ -45,7 +47,7 @@ func NewConfig(initLogger *slog.Logger) Config {
 		iotMonitorConfigPath := filepath.Join(configDir, "iotmonitor", "config.toml")
 		initLogger.Info("finding config file from user directory", slog.String("path", iotMonitorConfigPath))
 
-		err = conf.Load(file.Provider(iotMonitorConfigPath), toml.Parser())
+		err = conf.Load(file.Provider(iotMonitorConfigPath), parser)
 		if err != nil {
 			slog.Debug(
 				"cannot find config file from user directory",
@@ -56,7 +58,7 @@ func NewConfig(initLogger *slog.Logger) Config {
 	}
 
 	// Debug friendly
-	err = conf.Load(file.Provider("config.toml"), toml.Parser())
+	err = conf.Load(file.Provider("config.toml"), parser)
 	if err != nil {
 		initLogger.Debug(
 			"cannot find config file in the current directory",
@@ -66,8 +68,8 @@ func NewConfig(initLogger *slog.Logger) Config {
 	}
 
 	// Env
-	err = conf.Load(env.Provider("IOT_MONITOR_", "_", func(s string) string {
-		return strings.ToLower(strings.TrimPrefix(s, "IOT_MONITOR_"))
+	err = conf.Load(env.ProviderWithValue("IOT_MONITOR_", "_", func(k string, v string) (string, interface{}) {
+		return strings.ToLower(strings.TrimPrefix(k, "IOT_MONITOR_")), os.ExpandEnv(v)
 	}), nil)
 	if err != nil {
 		initLogger.Debug(
@@ -77,4 +79,27 @@ func NewConfig(initLogger *slog.Logger) Config {
 	}
 
 	return Config{Koanf: conf}
+}
+
+type EnvInterpolation struct {
+	parser koanf.Parser
+}
+
+func (ei *EnvInterpolation) Marshal(m map[string]interface{}) ([]byte, error) {
+	return ei.parser.Marshal(m)
+}
+
+func (ei *EnvInterpolation) Unmarshal(bytes []byte) (map[string]interface{}, error) {
+	expanded := os.ExpandEnv(string(bytes))
+
+	unmarshalled, err := ei.parser.Unmarshal([]byte(expanded))
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalled, nil
+}
+
+func NewEnvInterpolation(parser koanf.Parser) koanf.Parser {
+	return &EnvInterpolation{parser: parser}
 }
