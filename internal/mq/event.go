@@ -14,11 +14,12 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
 	"github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type EventSubscriber interface {
-	SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[models.Metadata, *eventpb.EventMessage], error)
+	SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], error)
 }
 
 // TypedDelivery is a wrapper around amqp091.Delivery that includes the typed metadata and body.
@@ -29,8 +30,15 @@ type TypedDelivery[M any, B any] struct {
 	Body     B
 }
 
+// TraceableTypedDelivery is a wrapper around TypedDelivery that includes the trace context.
+type TraceableTypedDelivery[M any, B any] struct {
+	TypedDelivery[M, B]
+
+	SpanContext trace.SpanContext
+}
+
 // SubscribeEvent subscribes to the event messages.
-func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[models.Metadata, *eventpb.EventMessage], error) {
+func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], error) {
 	ctx, span := mq.tracer.Start(ctx, "subscribe_event")
 	defer span.End()
 
@@ -100,7 +108,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[mode
 	}
 	span.AddEvent("prepared raw message channel from AMQP")
 
-	eventsCh := make(chan TypedDelivery[models.Metadata, *eventpb.EventMessage], runtime.NumCPU())
+	eventsCh := make(chan TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], runtime.NumCPU())
 
 	// handle raw messages
 	go func() {
@@ -125,8 +133,6 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[mode
 				// zero-value messages, which is not expected.
 				break
 			}
-
-			slog.InfoContext(ctx, "waiting for raw message")
 
 			rawMessage := <-rawMessageCh
 
@@ -155,8 +161,8 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[mode
 	return eventsCh, nil
 }
 
-func (mq *amqpMQ) handleRawMessage(ctx context.Context, message amqp091.Delivery, ch chan<- TypedDelivery[models.Metadata, *eventpb.EventMessage]) error {
-	slog.InfoContext(ctx, "handle raw message", slog.Any("mes", message))
+func (mq *amqpMQ) handleRawMessage(ctx context.Context, message amqp091.Delivery, ch chan<- TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]) error {
+	mq.logger.DebugContext(ctx, "handle raw message", slog.Any("mes", message))
 
 	ctx = mq.propagator.Extract(ctx, NewMessageHeaderCarrier(message))
 	ctx, span := mq.tracer.Start(ctx, "handle_raw_message")
@@ -189,10 +195,13 @@ func (mq *amqpMQ) handleRawMessage(ctx context.Context, message amqp091.Delivery
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
-		ch <- TypedDelivery[models.Metadata, *eventpb.EventMessage]{
-			Delivery: message,
-			Metadata: metadata,
-			Body:     event,
+		ch <- TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]{
+			TypedDelivery: TypedDelivery[models.Metadata, *eventpb.EventMessage]{
+				Delivery: message,
+				Metadata: metadata,
+				Body:     event,
+			},
+			SpanContext: span.SpanContext(),
 		}
 		return nil
 	}

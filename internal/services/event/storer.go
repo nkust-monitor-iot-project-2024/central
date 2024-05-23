@@ -123,16 +123,23 @@ func (s *Storer) storeMovementEvent(ctx context.Context, movementInfo *eventpb.M
 	return true
 }
 
-func (s *Storer) Run(ctx context.Context, events <-chan mq.TypedDelivery[models.Metadata, *eventpb.EventMessage]) {
+func (s *Storer) Run(ctx context.Context, events <-chan mq.TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]) {
 	for event := range events {
-		s.logger.DebugContext(ctx, "received event",
-			slog.Any("metadata", event.Metadata))
+		func() {
+			ctx, span := s.tracer.Start(ctx, "handle_event", trace.WithLinks(
+				trace.Link{
+					SpanContext: event.SpanContext,
+					Attributes:  nil,
+				},
+			))
+			defer span.End()
 
-		s.handleEventsCounter.Add(ctx, 1)
-		if s.storeSingleEvent(ctx, event.Body, event.Metadata) {
-			s.insertedEventsCounter.Add(ctx, 1)
-		} else {
-			s.failedEventsCounter.Add(ctx, 1)
-		}
+			s.handleEventsCounter.Add(ctx, 1)
+			if s.storeSingleEvent(ctx, event.Body, event.Metadata) {
+				s.insertedEventsCounter.Add(ctx, 1)
+			} else {
+				s.failedEventsCounter.Add(ctx, 1)
+			}
+		}()
 	}
 }
