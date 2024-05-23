@@ -11,8 +11,13 @@ message Metadata {
     google.protobuf.Timestamp emitted_at = 3;
 }
 
-message MovementEventMessage {
-    Metadata metadata = 1;
+message MovementInfo {
     bytes picture = 2;
 }
 
+message EventMessage {
+    Metadata metadata = 1;
+    oneof event {
+        MovementInfo movement_info = 2;
+    }
+}

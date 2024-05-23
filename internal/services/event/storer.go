@@ -39,7 +39,7 @@ var (
 	)
 )
 
-func (s *Service) storeSingleEvent(ctx context.Context, event *eventpb.MovementEventMessage) bool {
+func (s *Service) storeSingleEvent(ctx context.Context, event *eventpb.EventMessage) bool {
 	ctx, span := storerTracer.Start(ctx, "storeSingleEvent")
 	defer span.End()
 
