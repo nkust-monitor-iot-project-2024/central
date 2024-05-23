@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"runtime"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
@@ -163,25 +162,13 @@ func (mq *amqpMQ) handleRawMessage(ctx context.Context, message amqp091.Delivery
 	ctx, span := mq.tracer.Start(ctx, "handle_raw_message")
 	defer span.End()
 
-	if message.Timestamp.IsZero() {
-		// Skip the message if the timestamp is zero.
-		_ = message.Reject(false)
+	if message.ContentType != "application/json" || message.Type != "eventpb.EventMessage" || message.Timestamp.IsZero() {
+		span.SetStatus(codes.Error, "invalid header")
 
-		span.SetStatus(codes.Error, "zero timestamp")
-
-		return errors.New("zero timestamp")
+		return errors.New("invalid header")
 	}
 
-	if message.ContentType != "application/json; schema=EventMessage" {
-		// Skip the message if the content type is not JSON (schema=EventMessage)
-		_ = message.Reject(false)
-
-		span.SetStatus(codes.Error, "invalid content type")
-
-		return errors.New("invalid content type")
-	}
-
-	metadata, err := extractMetadataFromHeader(message.Headers, message.Timestamp)
+	metadata, err := extractMetadataFromHeader(message)
 	if err != nil {
 		span.SetStatus(codes.Error, "extract metadata failed")
 		span.RecordError(err)
@@ -211,20 +198,22 @@ func (mq *amqpMQ) handleRawMessage(ctx context.Context, message amqp091.Delivery
 	}
 }
 
-func extractMetadataFromHeader(headers amqp091.Table, eventTs time.Time) (models.Metadata, error) {
-	eventID, ok := headers["event_id"].(string)
-	if !ok {
-		return models.Metadata{}, fmt.Errorf("missing or invalid event_id")
+func extractMetadataFromHeader(delivery amqp091.Delivery) (models.Metadata, error) {
+	eventID := delivery.MessageId
+	if eventID == "" {
+		return models.Metadata{}, errors.New("missing or invalid MessageId (-> event_id)")
 	}
 	eventUUID, err := uuid.Parse(eventID)
 	if err != nil {
 		return models.Metadata{}, fmt.Errorf("parse event_id: %w", err)
 	}
 
-	deviceID, ok := headers["device_id"].(string)
-	if !ok {
-		return models.Metadata{}, fmt.Errorf("missing or invalid device_id")
+	deviceID := delivery.AppId
+	if deviceID == "" {
+		return models.Metadata{}, errors.New("missing or invalid AppId (-> device_id)")
 	}
+
+	eventTs := delivery.Timestamp
 
 	return models.Metadata{
 		EventID:   eventUUID,
