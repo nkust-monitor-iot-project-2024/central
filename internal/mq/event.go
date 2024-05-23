@@ -2,6 +2,7 @@ package mq
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"runtime"
@@ -122,7 +123,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[mode
 			}
 			if mq.channel.IsClosed() {
 				// If the channel is closed, we may receive a lot of
-				// zero-value message, which is not expected.
+				// zero-value messages, which is not expected.
 				break
 			}
 
@@ -130,21 +131,20 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[mode
 
 			rawMessage := <-rawMessageCh
 
-			if rawMessage.Timestamp.IsZero() {
-				// Skip the message if the timestamp is zero.
-				_ = rawMessage.Reject(false)
-				return
-			}
-
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
 
-				_ = mq.handleRawMessage(ctx, rawMessage, eventsCh)
-
-				if err := rawMessage.Ack(false); err != nil {
-					mq.logger.WarnContext(ctx, "ack raw message failed", slogext.Error(err))
+				if err := mq.handleRawMessage(ctx, rawMessage, eventsCh); err != nil {
+					if err := rawMessage.Reject(false); err != nil {
+						mq.logger.WarnContext(ctx, "reject raw message failed", slogext.Error(err))
+					}
+				} else {
+					if err := rawMessage.Ack(false); err != nil {
+						mq.logger.WarnContext(ctx, "ack raw message failed", slogext.Error(err))
+					}
 				}
+
 			}()
 		}
 
@@ -162,6 +162,24 @@ func (mq *amqpMQ) handleRawMessage(ctx context.Context, message amqp091.Delivery
 	ctx = mq.propagator.Extract(ctx, NewMessageHeaderCarrier(message.Headers))
 	ctx, span := mq.tracer.Start(ctx, "handle_raw_message")
 	defer span.End()
+
+	if message.Timestamp.IsZero() {
+		// Skip the message if the timestamp is zero.
+		_ = message.Reject(false)
+
+		span.SetStatus(codes.Error, "zero timestamp")
+
+		return errors.New("zero timestamp")
+	}
+
+	if message.ContentType != "application/json; schema=EventMessage" {
+		// Skip the message if the content type is not JSON (schema=EventMessage)
+		_ = message.Reject(false)
+
+		span.SetStatus(codes.Error, "invalid content type")
+
+		return errors.New("invalid content type")
+	}
 
 	metadata, err := extractMetadataFromHeader(message.Headers, message.Timestamp)
 	if err != nil {
