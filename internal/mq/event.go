@@ -31,7 +31,7 @@ type TypedDelivery[M any, B any] struct {
 
 // SubscribeEvent subscribes to the event messages.
 func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[models.Metadata, *eventpb.EventMessage], error) {
-	ctx, span := mq.tracer.Start(ctx, "mq.SubscribeEvent")
+	ctx, span := mq.tracer.Start(ctx, "subscribe_event")
 	defer span.End()
 
 	span.AddEvent("prepare AMQP queue")
@@ -104,7 +104,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[mode
 
 	// handle raw messages
 	go func() {
-		ctx, span := mq.tracer.Start(ctx, "mq.SubscribeEvent.handleRawMessages")
+		ctx, span := mq.tracer.Start(ctx, "subscribe_event/handle_raw_messages")
 		defer span.End()
 
 		span.AddEvent("start handling raw messages")
@@ -160,7 +160,7 @@ func (mq *amqpMQ) handleRawMessage(ctx context.Context, message amqp091.Delivery
 	slog.InfoContext(ctx, "handle raw message", slog.Any("mes", message))
 
 	ctx = mq.propagator.Extract(ctx, NewMessageHeaderCarrier(message.Headers))
-	ctx, span := mq.tracer.Start(ctx, "mq.handleRawMessage")
+	ctx, span := mq.tracer.Start(ctx, "handle_raw_message")
 	defer span.End()
 
 	metadata, err := extractMetadataFromHeader(message.Headers, message.Timestamp)

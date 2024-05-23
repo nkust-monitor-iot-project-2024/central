@@ -66,7 +66,7 @@ func NewStorer(service *Service) (*Storer, error) {
 }
 
 func (s *Storer) storeSingleEvent(ctx context.Context, event *eventpb.EventMessage, metadata models.Metadata) bool {
-	ctx, span := s.tracer.Start(ctx, "storeSingleEvent")
+	ctx, span := s.tracer.Start(ctx, "store_single_event")
 	defer span.End()
 
 	s.logger.DebugContext(ctx, "storing single event", slog.Any("metadata", metadata))
@@ -86,7 +86,7 @@ func (s *Storer) storeSingleEvent(ctx context.Context, event *eventpb.EventMessa
 }
 
 func (s *Storer) storeMovementEvent(ctx context.Context, movementInfo *eventpb.MovementInfo, metadata models.Metadata) bool {
-	ctx, span := s.tracer.Start(ctx, "storeMovementEvent")
+	ctx, span := s.tracer.Start(ctx, "store_movement_event")
 	defer span.End()
 
 	eventID := metadata.GetEventID()

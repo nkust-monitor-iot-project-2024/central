@@ -13,9 +13,7 @@ import (
 	"go.uber.org/fx"
 )
 
-var ConfigFxModule = fx.Module("config", fx.Provide(
-	fx.Annotate(NewConfig, fx.ParamTags(`name:"initLogger"`))),
-)
+var ConfigFxModule = fx.Module("config", fx.Provide(NewConfig))
 
 type Config struct {
 	*koanf.Koanf

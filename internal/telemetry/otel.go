@@ -1,6 +1,9 @@
 package telemetry
 
 import (
+	"log/slog"
+
+	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.uber.org/fx"
@@ -52,7 +55,10 @@ var FxModule = fx.Module(
 			},
 			OnStop: func(ctx context.Context) error {
 				if shutdown != nil {
-					return shutdown(ctx)
+					if err := shutdown(ctx); err != nil {
+						slog.ErrorContext(ctx, "shutdown telemetry", slogext.Error(err))
+						return err
+					}
 				}
 
 				return nil
