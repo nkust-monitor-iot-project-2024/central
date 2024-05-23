@@ -2,8 +2,8 @@ package mq
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"log/slog"
 	"runtime"
 	"sync"
 	"time"
@@ -14,7 +14,6 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
 	"github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel/codes"
-	"golang.org/x/sync/semaphore"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -32,10 +31,10 @@ type TypedDelivery[M any, B any] struct {
 
 // SubscribeEvent subscribes to the event messages.
 func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[models.Metadata, *eventpb.EventMessage], error) {
-	_, span := mq.tracer.Start(ctx, "mq.SubscribeEvent._prepare")
+	ctx, span := mq.tracer.Start(ctx, "mq.SubscribeEvent")
 	defer span.End()
 
-	span.AddEvent("declare exchange of AMQP")
+	span.AddEvent("prepare AMQP queue")
 	err := mq.channel.ExchangeDeclare(
 		"events_topic",
 		"topic",
@@ -51,14 +50,12 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[mode
 
 		return nil, fmt.Errorf("declare exchange: %w", err)
 	}
-	span.AddEvent("declared exchange of AMQP")
 
-	span.AddEvent("declare queue of AMQP")
 	queue, err := mq.channel.QueueDeclare(
 		"",
 		false,
-		false,
-		false,
+		true,
+		true,
 		false,
 		nil,
 	)
@@ -68,9 +65,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[mode
 
 		return nil, fmt.Errorf("declare queue: %w", err)
 	}
-	span.AddEvent("declared queue of AMQP")
 
-	span.AddEvent("bind queue to exchange of AMQP")
 	err = mq.channel.QueueBind(
 		queue.Name,
 		"event.v1.*",
@@ -83,7 +78,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[mode
 
 		return nil, fmt.Errorf("bind queue: %w", err)
 	}
-	span.AddEvent("bound queue to exchange of AMQP")
+	span.AddEvent("prepared the AMQP queue")
 
 	span.AddEvent("prepare raw message channel from AMQP")
 	consumer := "event-subscriber-" + uuid.New().String()
@@ -91,8 +86,8 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[mode
 		ctx,
 		queue.Name,
 		consumer,
-		true,
 		false,
+		true,
 		false,
 		false,
 		nil,
@@ -103,61 +98,66 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[mode
 
 		return nil, fmt.Errorf("consume: %w", err)
 	}
-	span.AddEvent("prepared the raw channel")
+	span.AddEvent("prepared raw message channel from AMQP")
 
 	eventsCh := make(chan TypedDelivery[models.Metadata, *eventpb.EventMessage], runtime.NumCPU())
 
 	// handle raw messages
 	go func() {
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
+		ctx, span := mq.tracer.Start(ctx, "mq.SubscribeEvent.handleRawMessages")
+		defer span.End()
 
-		sema := semaphore.NewWeighted(int64(runtime.NumCPU() - 1 /* for the main goroutine */))
+		span.AddEvent("start handling raw messages")
+
+		defer func() {
+			span.AddEvent("cleaning up the resource")
+			close(eventsCh)
+		}()
 
 		wg := sync.WaitGroup{}
 
 		for {
-			if err := sema.Acquire(ctx, 1); err != nil {
+			if err := ctx.Err(); err != nil {
+				break
+			}
+			if mq.channel.IsClosed() {
+				// If the channel is closed, we may receive a lot of
+				// zero-value message, which is not expected.
 				break
 			}
 
-			select {
-			case <-ctx.Done():
-				break
-			case rawMessage := <-rawMessageCh:
-				wg.Add(1)
+			slog.InfoContext(ctx, "waiting for raw message")
 
-				go func() {
-					defer sema.Release(1)
-					defer wg.Done()
+			rawMessage := <-rawMessageCh
 
-					if err := mq.handleRawMessage(ctx, rawMessage, eventsCh); err != nil {
-						if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
-							mq.logger.WarnContext(ctx, "handle raw message failed", slogext.Error(err))
-						}
-					}
-				}()
-			}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				_ = mq.handleRawMessage(ctx, rawMessage, eventsCh)
+
+				if err := rawMessage.Ack(false); err != nil {
+					mq.logger.WarnContext(ctx, "ack raw message failed", slogext.Error(err))
+				}
+			}()
 		}
 
 		wg.Wait()
 
-		// cleanup
-		if err := mq.channel.Cancel(consumer, false); err != nil {
-			mq.logger.WarnContext(ctx, "cancel consumer failed", slogext.Error(err))
-		}
-		close(eventsCh)
+		span.AddEvent("finished handling raw messages")
 	}()
 
 	return eventsCh, nil
 }
 
 func (mq *amqpMQ) handleRawMessage(ctx context.Context, message amqp091.Delivery, ch chan<- TypedDelivery[models.Metadata, *eventpb.EventMessage]) error {
+	slog.InfoContext(ctx, "handle raw message", slog.Any("mes", message))
+
 	ctx = mq.propagator.Extract(ctx, NewMessageHeaderCarrier(message.Headers))
 	ctx, span := mq.tracer.Start(ctx, "mq.handleRawMessage")
 	defer span.End()
 
-	metadata, err := extractMetadataFromHeader(message.Headers)
+	metadata, err := extractMetadataFromHeader(message.Headers, message.Timestamp)
 	if err != nil {
 		span.SetStatus(codes.Error, "extract metadata failed")
 		span.RecordError(err)
@@ -187,7 +187,7 @@ func (mq *amqpMQ) handleRawMessage(ctx context.Context, message amqp091.Delivery
 	}
 }
 
-func extractMetadataFromHeader(headers amqp091.Table) (models.Metadata, error) {
+func extractMetadataFromHeader(headers amqp091.Table, eventTs time.Time) (models.Metadata, error) {
 	eventID, ok := headers["event_id"].(string)
 	if !ok {
 		return models.Metadata{}, fmt.Errorf("missing or invalid event_id")
@@ -202,14 +202,9 @@ func extractMetadataFromHeader(headers amqp091.Table) (models.Metadata, error) {
 		return models.Metadata{}, fmt.Errorf("missing or invalid device_id")
 	}
 
-	emittedAt, ok := headers["emitted_at"].(time.Time)
-	if !ok {
-		return models.Metadata{}, fmt.Errorf("missing or invalid emitted_at")
-	}
-
 	return models.Metadata{
 		EventID:   eventUUID,
 		DeviceID:  deviceID,
-		EmittedAt: emittedAt,
+		EmittedAt: eventTs,
 	}, nil
 }
