@@ -158,7 +158,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[mode
 func (mq *amqpMQ) handleRawMessage(ctx context.Context, message amqp091.Delivery, ch chan<- TypedDelivery[models.Metadata, *eventpb.EventMessage]) error {
 	slog.InfoContext(ctx, "handle raw message", slog.Any("mes", message))
 
-	ctx = mq.propagator.Extract(ctx, NewMessageHeaderCarrier(message.Headers))
+	ctx = mq.propagator.Extract(ctx, NewMessageHeaderCarrier(message))
 	ctx, span := mq.tracer.Start(ctx, "handle_raw_message")
 	defer span.End()
 
@@ -176,7 +176,7 @@ func (mq *amqpMQ) handleRawMessage(ctx context.Context, message amqp091.Delivery
 		return fmt.Errorf("extract metadata: %w", err)
 	}
 
-	var event *eventpb.EventMessage
+	event := &eventpb.EventMessage{}
 
 	if err := protojson.Unmarshal(message.Body, event); err != nil {
 		span.SetStatus(codes.Error, "unmarshal failed")
