@@ -112,7 +112,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[mode
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		sema := semaphore.NewWeighted(int64(runtime.NumCPU() - 2 /* for the main goroutine and the event subscriber */))
+		sema := semaphore.NewWeighted(int64(runtime.NumCPU() - 1 /* for the main goroutine */))
 
 		wg := sync.WaitGroup{}
 

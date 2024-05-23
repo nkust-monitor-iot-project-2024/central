@@ -12,6 +12,7 @@ import (
 func main() {
 	fx.New(
 		utils.FxInitLoggerModule,
+		fx.WithLogger(utils.FxWithLoggerFn),
 		utils.ConfigFxModule,
 		fx.Provide(utils.NewResourceBuilder("event-service", "v0")),
 		database.EntFx,

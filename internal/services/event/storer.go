@@ -123,7 +123,7 @@ func (s *Storer) storeMovementEvent(ctx context.Context, movementInfo *eventpb.M
 	return true
 }
 
-func (s *Storer) Run(ctx context.Context, events <-chan *mq.TypedDelivery[models.Metadata, *eventpb.EventMessage]) {
+func (s *Storer) Run(ctx context.Context, events <-chan mq.TypedDelivery[models.Metadata, *eventpb.EventMessage]) {
 	for event := range events {
 		s.logger.DebugContext(ctx, "received event",
 			slog.Any("metadata", event.Metadata))

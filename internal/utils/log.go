@@ -11,16 +11,15 @@ import (
 
 var FxInitLoggerModule = fx.Module("init-logger",
 	fx.Provide(fx.Annotate(NewInitLogger, fx.ResultTags(`name:"initLogger"`))),
-	fx.WithLogger(fxWithLoggerFn),
 )
 
-type fxWithLoggerParam struct {
+type FxWithLoggerParam struct {
 	fx.In
 
 	Logger *slog.Logger `name:"initLogger"`
 }
 
-func fxWithLoggerFn(param fxWithLoggerParam) fxevent.Logger {
+func FxWithLoggerFn(param FxWithLoggerParam) fxevent.Logger {
 	return &fxevent.SlogLogger{
 		Logger: param.Logger,
 	}

@@ -1,6 +1,7 @@
 package mq
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -12,10 +13,25 @@ import (
 	"go.uber.org/fx"
 )
 
-var FxModule = fx.Module("amqp-mq", fx.Provide(ConnectAmqp))
+var FxModule = fx.Module("amqp-mq", fx.Provide(func(lifecycle fx.Lifecycle, config utils.Config) (MessageQueue, error) {
+	messageQueue, err := ConnectAmqp(config)
+	if err != nil {
+		return nil, fmt.Errorf("connect to amqp: %w", err)
+	}
+
+	lifecycle.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			return messageQueue.Close()
+		},
+	})
+
+	return messageQueue, nil
+}))
 
 type MessageQueue interface {
 	EventSubscriber
+
+	Close() error
 }
 
 type amqpMQ struct {
@@ -54,4 +70,12 @@ func ConnectAmqp(config utils.Config) (MessageQueue, error) {
 		tracer:     tracer,
 		logger:     logger,
 	}, nil
+}
+
+func (mq *amqpMQ) Close() error {
+	if err := mq.channel.Close(); err != nil {
+		return fmt.Errorf("close channel: %w", err)
+	}
+
+	return nil
 }

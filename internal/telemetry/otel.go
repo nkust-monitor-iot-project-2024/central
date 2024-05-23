@@ -43,14 +43,19 @@ import (
 var FxModule = fx.Module(
 	"otel",
 	fx.Invoke(func(lifecycle fx.Lifecycle, config utils.Config, resource *resource.Resource) error {
-		shutdown, err := SetupOTelSDK(config, resource)
-		if err != nil {
-			return err
-		}
+		var shutdown OtelShutdownFn
 
 		lifecycle.Append(fx.Hook{
+			OnStart: func(ctx context.Context) (err error) {
+				shutdown, err = SetupOTelSDK(ctx, config, resource)
+				return
+			},
 			OnStop: func(ctx context.Context) error {
-				return shutdown(ctx)
+				if shutdown != nil {
+					return shutdown(ctx)
+				}
+
+				return nil
 			},
 		})
 
@@ -60,9 +65,7 @@ var FxModule = fx.Module(
 
 type OtelShutdownFn func(context.Context) error
 
-func SetupOTelSDK(config utils.Config, resource *resource.Resource) (shutdown OtelShutdownFn, err error) {
-	ctx := context.Background()
-
+func SetupOTelSDK(ctx context.Context, config utils.Config, resource *resource.Resource) (shutdown OtelShutdownFn, err error) {
 	var shutdownFuncs []func(context.Context) error
 
 	// shutdown calls cleanup functions registered via shutdownFuncs.

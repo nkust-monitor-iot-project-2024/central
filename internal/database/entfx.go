@@ -9,6 +9,8 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/ent"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"go.uber.org/fx"
+
+	_ "github.com/lib/pq"
 )
 
 var EntFx = fx.Module("ent", fx.Provide(func(lifecycle fx.Lifecycle, config utils.Config) (*ent.Client, error) {
@@ -48,15 +50,18 @@ var EntFx = fx.Module("ent", fx.Provide(func(lifecycle fx.Lifecycle, config util
 	}
 
 	lifecycle.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			// Run the auto migration tool.
+			if err := client.Schema.Create(ctx); err != nil {
+				return fmt.Errorf("failed creating schema resources: %w", err)
+			}
+
+			return nil
+		},
 		OnStop: func(context.Context) error {
 			return client.Close()
 		},
 	})
-
-	// Run the auto migration tool.
-	if err := client.Schema.Create(context.Background()); err != nil {
-		return nil, fmt.Errorf("failed creating schema resources: %w", err)
-	}
 
 	return client, nil
 }))
