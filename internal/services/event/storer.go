@@ -91,8 +91,24 @@ func (s *Storer) storeMovementEvent(ctx context.Context, movementInfo *eventpb.M
 
 	eventID := metadata.GetEventID()
 
+	span.AddEvent("create event with movement information in database")
+	eventModel, err := s.client.Event.Create().
+		SetID(eventID).
+		SetDeviceID(metadata.GetDeviceID()).
+		SetCreatedAt(metadata.GetEmittedAt()).
+		SetType("movement").
+		Save(ctx)
+	if err != nil {
+		span.SetStatus(codes.Error, "failed to create event with movement information in database")
+		span.RecordError(err)
+
+		return false
+	}
+	span.AddEvent("created event with movement information in database",
+		trace.WithAttributes(otelattrext.UUID("event_id", eventModel.ID)))
+
 	span.AddEvent("create movement information in database")
-	movementModel, err := s.client.Movement.Create().SetPicture(movementInfo.GetPicture()).Save(ctx)
+	movementModel, err := s.client.Movement.Create().AddEvent(eventModel).SetPicture(movementInfo.GetPicture()).Save(ctx)
 	if err != nil {
 		span.SetStatus(codes.Error, "failed to create movement information in database")
 		span.RecordError(err)
@@ -100,25 +116,10 @@ func (s *Storer) storeMovementEvent(ctx context.Context, movementInfo *eventpb.M
 		return false
 	}
 	span.AddEvent("created movement information in database",
-		trace.WithAttributes(otelattrext.UUID("movement_id", movementModel.ID)))
-
-	span.AddEvent("create event with movement information in database")
-	err = s.client.Event.Create().
-		SetID(eventID).
-		SetDeviceID(metadata.GetDeviceID()).
-		SetCreatedAt(metadata.GetEmittedAt()).
-		SetType("movement").
-		AddMovements(movementModel).
-		Exec(ctx)
-	if err != nil {
-		span.SetStatus(codes.Error, "failed to create event with movement information in database")
-		span.RecordError(err)
-
-		return false
-	}
-
-	span.AddEvent("created event with movement information in database",
-		trace.WithAttributes(otelattrext.UUID("event_id", eventID)))
+		trace.WithAttributes(
+			otelattrext.UUID("movement_id", movementModel.ID),
+			otelattrext.UUID("event_id", eventModel.ID),
+		))
 
 	return true
 }
