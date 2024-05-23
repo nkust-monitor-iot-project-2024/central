@@ -130,6 +130,12 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TypedDelivery[mode
 
 			rawMessage := <-rawMessageCh
 
+			if rawMessage.Timestamp.IsZero() {
+				// Skip the message if the timestamp is zero.
+				_ = rawMessage.Reject(false)
+				return
+			}
+
 			wg.Add(1)
 			go func() {
 				defer wg.Done()

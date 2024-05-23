@@ -21,7 +21,7 @@ type Config struct {
 	*koanf.Koanf
 }
 
-func NewConfig(initLogger *slog.Logger) Config {
+func NewConfig() Config {
 	conf := koanf.New(".")
 
 	parser := NewEnvInterpolation(toml.Parser())
@@ -29,7 +29,7 @@ func NewConfig(initLogger *slog.Logger) Config {
 	// Docker friendly
 	err := conf.Load(file.Provider("/etc/iotmonitor/config.toml"), parser)
 	if err != nil {
-		initLogger.Debug(
+		slog.Debug(
 			"cannot find config file from /etc",
 			slog.String("path", "/etc/iotmonitor/config.toml"),
 			slog.String("error", err.Error()),
@@ -39,13 +39,13 @@ func NewConfig(initLogger *slog.Logger) Config {
 	// User friendly
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		initLogger.Debug(
+		slog.Debug(
 			"cannot find user home directory",
 			slog.String("error", err.Error()),
 		)
 	} else {
 		iotMonitorConfigPath := filepath.Join(configDir, "iotmonitor", "config.toml")
-		initLogger.Info("finding config file from user directory", slog.String("path", iotMonitorConfigPath))
+		slog.Info("finding config file from user directory", slog.String("path", iotMonitorConfigPath))
 
 		err = conf.Load(file.Provider(iotMonitorConfigPath), parser)
 		if err != nil {
@@ -60,7 +60,7 @@ func NewConfig(initLogger *slog.Logger) Config {
 	// Debug friendly
 	err = conf.Load(file.Provider("config.toml"), parser)
 	if err != nil {
-		initLogger.Debug(
+		slog.Debug(
 			"cannot find config file in the current directory",
 			slog.String("path", "config.toml"),
 			slog.String("error", err.Error()),
@@ -72,7 +72,7 @@ func NewConfig(initLogger *slog.Logger) Config {
 		return strings.ToLower(strings.TrimPrefix(k, "IOT_MONITOR_")), os.ExpandEnv(v)
 	}), nil)
 	if err != nil {
-		initLogger.Debug(
+		slog.Debug(
 			"cannot find environment variables",
 			slog.String("error", err.Error()),
 		)

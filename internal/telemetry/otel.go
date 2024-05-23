@@ -130,9 +130,28 @@ func newTraceProvider(ctx context.Context, config utils.Config, serviceResource 
 	traceExporter, err := func() (trace.SpanExporter, error) {
 		endpointConfig := config.Cut("telemetry.endpoint")
 
+		if baselimeApiKey := endpointConfig.String("baselime.api_key"); baselimeApiKey != "" {
+			dataset := endpointConfig.String("baselime.dataset")
+			if dataset == "" {
+				dataset = "otel"
+			}
+
+			exporter, err := otlptracehttp.New(ctx,
+				otlptracehttp.WithEndpointURL("https://otel.baselime.io/v1/"),
+				otlptracehttp.WithHeaders(map[string]string{
+					"x-api-key":          baselimeApiKey,
+					"x-baselime-dataset": dataset,
+				}))
+			if err != nil {
+				return nil, fmt.Errorf("set Baselime exporter: %w", err)
+			}
+
+			return exporter, nil
+		}
+
 		for _, k := range []string{"trace.grpc", "grpc"} {
 			if v := endpointConfig.String(k); v != "" {
-				exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithEndpoint(v))
+				exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithEndpointURL(v))
 				if err != nil {
 					return nil, fmt.Errorf("set gRPC endpoint %q: %w", v, err)
 				}
@@ -142,7 +161,7 @@ func newTraceProvider(ctx context.Context, config utils.Config, serviceResource 
 
 		for _, k := range []string{"trace.http", "http"} {
 			if v := endpointConfig.String(k); v != "" {
-				exporter, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpoint(v))
+				exporter, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(v))
 				if err != nil {
 					return nil, fmt.Errorf("set HTTP endpoint %q: %w", v, err)
 				}
@@ -172,9 +191,28 @@ func newMeterProvider(ctx context.Context, config utils.Config, serviceResource 
 	metricExporter, err := func() (metric.Exporter, error) {
 		endpointConfig := config.Cut("telemetry.endpoint")
 
+		if baselimeApiKey := endpointConfig.String("baselime.api_key"); baselimeApiKey != "" {
+			dataset := endpointConfig.String("baselime.dataset")
+			if dataset == "" {
+				dataset = "otel"
+			}
+
+			exporter, err := otlpmetrichttp.New(ctx,
+				otlpmetrichttp.WithEndpointURL("https://otel.baselime.io/v1/"),
+				otlpmetrichttp.WithHeaders(map[string]string{
+					"x-api-key":          baselimeApiKey,
+					"x-baselime-dataset": dataset,
+				}))
+			if err != nil {
+				return nil, fmt.Errorf("set Baselime exporter: %w", err)
+			}
+
+			return exporter, nil
+		}
+
 		for _, k := range []string{"metric.grpc", "grpc"} {
 			if v := endpointConfig.String(k); v != "" {
-				exporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithEndpoint(v))
+				exporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithEndpointURL(v))
 				if err != nil {
 					return nil, fmt.Errorf("set gRPC endpoint %q: %w", v, err)
 				}
@@ -184,7 +222,7 @@ func newMeterProvider(ctx context.Context, config utils.Config, serviceResource 
 
 		for _, k := range []string{"metric.http", "http"} {
 			if v := endpointConfig.String(k); v != "" {
-				exporter, err := otlpmetrichttp.New(ctx, otlpmetrichttp.WithEndpoint(v))
+				exporter, err := otlpmetrichttp.New(ctx, otlpmetrichttp.WithEndpointURL(v))
 				if err != nil {
 					return nil, fmt.Errorf("set HTTP endpoint %q: %w", v, err)
 				}
@@ -214,9 +252,28 @@ func newLoggerProvider(ctx context.Context, config utils.Config, serviceResource
 	logExporter, err := func() (log.Exporter, error) {
 		endpointConfig := config.Cut("telemetry.endpoint")
 
+		if baselimeApiKey := endpointConfig.String("baselime.api_key"); baselimeApiKey != "" {
+			dataset := endpointConfig.String("baselime.dataset")
+			if dataset == "" {
+				dataset = "otel"
+			}
+
+			exporter, err := otlploghttp.New(ctx,
+				otlploghttp.WithEndpointURL("https://otel.baselime.io/v1/"),
+				otlploghttp.WithHeaders(map[string]string{
+					"x-api-key":          baselimeApiKey,
+					"x-baselime-dataset": dataset,
+				}))
+			if err != nil {
+				return nil, fmt.Errorf("set Baselime exporter: %w", err)
+			}
+
+			return exporter, nil
+		}
+
 		for _, k := range []string{"log.http", "http"} {
 			if v := endpointConfig.String(k); v != "" {
-				exporter, err := otlploghttp.New(ctx, otlploghttp.WithEndpoint(v))
+				exporter, err := otlploghttp.New(ctx, otlploghttp.WithEndpointURL(v))
 				if err != nil {
 					return nil, fmt.Errorf("set HTTP endpoint %q: %w", v, err)
 				}
