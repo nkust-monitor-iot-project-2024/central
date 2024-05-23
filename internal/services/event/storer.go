@@ -12,6 +12,7 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
@@ -132,12 +133,11 @@ func (s *Storer) storeMovementEvent(ctx context.Context, movementInfo *eventpb.M
 func (s *Storer) Run(ctx context.Context, events <-chan mq.TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]) {
 	for event := range events {
 		func() {
-			ctx, span := s.tracer.Start(ctx, "handle_event", trace.WithLinks(
-				trace.Link{
-					SpanContext: event.SpanContext,
-					Attributes:  nil,
-				},
-			))
+			ctx := trace.ContextWithSpanContext(ctx, event.SpanContext)
+			ctx, span := s.tracer.Start(ctx, "handle_event",
+				trace.WithAttributes(
+					otelattrext.UUID("event_id", event.Metadata.GetEventID()),
+					attribute.String("device_id", event.Metadata.GetDeviceID())))
 			defer span.End()
 
 			s.handleEventsCounter.Add(ctx, 1)

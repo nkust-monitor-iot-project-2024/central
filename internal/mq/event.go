@@ -62,9 +62,9 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 
 	queue, err := mq.channel.QueueDeclare(
 		"",
+		true,
 		false,
-		true,
-		true,
+		false,
 		false,
 		nil,
 	)
@@ -96,7 +96,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 		queue.Name,
 		consumer,
 		false,
-		true,
+		false,
 		false,
 		false,
 		nil,
@@ -125,6 +125,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 				break
 			}
 
+			slog.Info("waiting for raw message")
 			rawMessage := <-rawMessageCh
 
 			wg.Add(1)
@@ -157,7 +158,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 }
 
 func (mq *amqpMQ) handleRawMessage(ctx context.Context, message amqp091.Delivery, ch chan<- TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]) error {
-	mq.logger.DebugContext(ctx, "handle raw message", slog.Any("mes", message))
+	mq.logger.DebugContext(ctx, "handle raw message", slog.Any("message", message))
 
 	ctx = mq.propagator.Extract(ctx, NewMessageHeaderCarrier(message))
 	ctx, span := mq.tracer.Start(ctx, "handle_raw_message")
