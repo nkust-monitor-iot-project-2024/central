@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log/slog"
+
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/services/event"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/telemetry"
@@ -10,6 +12,7 @@ import (
 )
 
 func main() {
+	slog.SetLogLoggerLevel(slog.LevelDebug)
 	fx.New(
 		fx.WithLogger(utils.FxWithLoggerFn),
 		utils.ConfigFxModule,
