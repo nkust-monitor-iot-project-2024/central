@@ -14,8 +14,21 @@ type eventRepositoryEnt struct {
 	client *ent.Client
 }
 
-func NewEventRepositoryEnt(client *ent.Client) EventRepository {
+type EntRepository interface {
+	Client() *ent.Client
+}
+
+type EntEventRepository interface {
+	EventRepository
+	EntRepository
+}
+
+func NewEventRepositoryEnt(client *ent.Client) EntEventRepository {
 	return &eventRepositoryEnt{client: client}
+}
+
+func (r *eventRepositoryEnt) Client() *ent.Client {
+	return r.client
 }
 
 func (r *eventRepositoryEnt) GetEvent(ctx context.Context, id uuid.UUID) (Event, error) {
