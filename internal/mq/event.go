@@ -40,7 +40,7 @@ type TraceableTypedDelivery[M any, B any] struct {
 
 // SubscribeEvent subscribes to the event messages.
 func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], error) {
-	_, span := mq.tracer.Start(ctx, "subscribe_event")
+	_, span := mq.tracer.Start(ctx, "mq/subscribe_event")
 	defer span.End()
 
 	span.AddEvent("prepare AMQP queue")
@@ -130,14 +130,14 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 
 			wg.Add(1)
 			go func() {
-				ctx, span := mq.tracer.Start(ctx, "subscribe_event/handle_raw_message", trace.WithAttributes(
+				ctx, span := mq.tracer.Start(ctx, "mq/subscribe_event/handle_raw_message", trace.WithAttributes(
 					attribute.String("message_id", rawMessage.MessageId),
 				))
 				defer span.End()
 
 				defer wg.Done()
 
-				if err := mq.handleRawMessage(ctx, rawMessage, eventsCh); err != nil {
+				if err := mq.handleRawEventMessage(ctx, rawMessage, eventsCh); err != nil {
 					if err := rawMessage.Reject(false); err != nil {
 						mq.logger.WarnContext(ctx, "reject raw message failed", slogext.Error(err))
 					}
@@ -157,11 +157,11 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 	return eventsCh, nil
 }
 
-func (mq *amqpMQ) handleRawMessage(ctx context.Context, message amqp091.Delivery, ch chan<- TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]) error {
+func (mq *amqpMQ) handleRawEventMessage(ctx context.Context, message amqp091.Delivery, ch chan<- TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]) error {
 	mq.logger.DebugContext(ctx, "handle raw message", slog.Any("message", message))
 
 	ctx = mq.propagator.Extract(ctx, NewMessageHeaderCarrier(message))
-	ctx, span := mq.tracer.Start(ctx, "handle_raw_message")
+	ctx, span := mq.tracer.Start(ctx, "mq/handle_raw_event_message")
 	defer span.End()
 
 	if message.ContentType != "application/json" || message.Type != "eventpb.EventMessage" || message.Timestamp.IsZero() {
