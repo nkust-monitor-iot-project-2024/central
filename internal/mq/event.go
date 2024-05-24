@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"runtime"
 	"sync"
 
 	"github.com/google/uuid"
@@ -89,12 +88,20 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 	}
 	span.AddEvent("prepared the AMQP queue")
 
+	span.AddEvent("set QoS of the channel")
+	if err := mq.channel.Qos(64, 0, false); err != nil {
+		span.SetStatus(codes.Error, "set QoS failed")
+		span.RecordError(err)
+
+		return nil, fmt.Errorf("set QoS: %w", err)
+	}
+	span.AddEvent("done setting QoS of the channel")
+
 	span.AddEvent("prepare raw message channel from AMQP")
-	consumer := "event-subscriber-" + uuid.New().String()
 	rawMessageCh, err := mq.channel.ConsumeWithContext(
 		ctx,
 		queue.Name,
-		consumer,
+		"",
 		false,
 		false,
 		false,
@@ -109,7 +116,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 	}
 	span.AddEvent("prepared raw message channel from AMQP")
 
-	eventsCh := make(chan TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], runtime.NumCPU())
+	eventsCh := make(chan TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], 64)
 
 	// handle raw messages
 	go func() {
