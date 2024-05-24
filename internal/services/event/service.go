@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/nkust-monitor-iot-project-2024/central/ent"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
+	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"go.uber.org/fx"
 )
 
@@ -32,13 +32,13 @@ var FxModule = fx.Module(
 )
 
 type Service struct {
-	client       *ent.Client
+	repo         models.EntEventRepository
 	messageQueue mq.MessageQueue
 }
 
-func New(client *ent.Client, mq mq.MessageQueue) *Service {
+func New(repo models.EntEventRepository, mq mq.MessageQueue) *Service {
 	return &Service{
-		client:       client,
+		repo:         repo,
 		messageQueue: mq,
 	}
 }

@@ -91,10 +91,11 @@ func (s *Storer) storeMovementEvent(ctx context.Context, movementInfo *eventpb.M
 	ctx, span := s.tracer.Start(ctx, "store_movement_event")
 	defer span.End()
 
+	client := s.repo.Client()
 	eventID := metadata.GetEventID()
 
 	span.AddEvent("create event with movement information in database")
-	eventModel, err := s.client.Event.Create().
+	eventModel, err := client.Event.Create().
 		SetID(eventID).
 		SetDeviceID(metadata.GetDeviceID()).
 		SetCreatedAt(metadata.GetEmittedAt()).
@@ -110,7 +111,7 @@ func (s *Storer) storeMovementEvent(ctx context.Context, movementInfo *eventpb.M
 		trace.WithAttributes(otelattrext.UUID("event_id", eventModel.ID)))
 
 	span.AddEvent("create movement information in database")
-	movementModel, err := s.client.Movement.Create().
+	movementModel, err := client.Movement.Create().
 		AddEvent(eventModel).
 		SetID(uuid.Must(uuid.NewV7())).
 		SetPicture(movementInfo.GetPicture()).
