@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/nkust-monitor-iot-project-2024/central/internal/database"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/services/event"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/telemetry"
@@ -16,7 +15,6 @@ func main() {
 		utils.ConfigFxModule,
 		fx.Provide(utils.NewResourceBuilder("event-service", "v0")),
 		telemetry.FxModule,
-		database.EntFx,
 		models.EventRepositoryEntFx,
 		mq.FxModule,
 		event.FxModule,

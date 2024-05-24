@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
+	"github.com/nkust-monitor-iot-project-2024/central/internal/database"
 	"go.uber.org/fx"
 )
 
@@ -24,7 +25,7 @@ type EntEventRepository interface {
 	EntRepository
 }
 
-var EventRepositoryEntFx = fx.Module("event-repository-ent", fx.Provide(NewEventRepositoryEnt))
+var EventRepositoryEntFx = fx.Module("event-repository-ent", database.EntFx, fx.Provide(NewEventRepositoryEnt))
 
 func NewEventRepositoryEnt(client *ent.Client) EntEventRepository {
 	return &eventRepositoryEnt{client: client}
