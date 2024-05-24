@@ -61,7 +61,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 	}
 
 	queue, err := mq.channel.QueueDeclare(
-		"",
+		"all_v1_events",
 		true,
 		false,
 		false,
