@@ -123,11 +123,13 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 
 		for {
 			if err := ctx.Err(); err != nil {
+				slog.Debug("fuck, why context is cancelled??")
 				break
 			}
 			if mq.channel.IsClosed() {
 				// If the channel is closed, we may receive a lot of
 				// zero-value messages, which is not expected.
+				slog.Debug("fuck, why channel is cancelled??", slog.Bool("ctxCancelled", ctx.Err() != nil))
 				break
 			}
 

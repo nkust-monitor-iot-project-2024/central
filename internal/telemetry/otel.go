@@ -30,19 +30,22 @@ var FxModule = fx.Module(
 	"otel",
 	fx.Invoke(func(lifecycle fx.Lifecycle, config utils.Config, resource *resource.Resource) error {
 		var shutdown OtelShutdownFn
+		ctx, cancel := context.WithCancel(context.Background())
 
 		lifecycle.Append(fx.Hook{
-			OnStart: func(ctx context.Context) (err error) {
+			OnStart: func(_ context.Context) (err error) {
 				shutdown, err = SetupOTelSDK(ctx, config, resource)
 				return
 			},
-			OnStop: func(ctx context.Context) error {
+			OnStop: func(_ context.Context) error {
 				if shutdown != nil {
 					if err := shutdown(ctx); err != nil {
 						slog.ErrorContext(ctx, "shutdown telemetry", slogext.Error(err))
 						return err
 					}
 				}
+
+				cancel()
 
 				return nil
 			},

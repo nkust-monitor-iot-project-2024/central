@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -17,16 +18,29 @@ var FxModule = fx.Module(
 	fx.Provide(NewStorer),
 	fx.Provide(New),
 	fx.Invoke(func(lifecycle fx.Lifecycle, s *Service) error {
+		ctx, cancel := context.WithCancel(context.Background())
+
 		lifecycle.Append(fx.Hook{
-			OnStart: func(ctx context.Context) error {
+			OnStart: func(_ context.Context) error {
 				go func() {
+					defer cancel()
+
 					if err := s.Run(ctx); err != nil {
-						slog.ErrorContext(ctx, "event service stopped with errors", slogext.Error(err))
+						if !errors.Is(err, context.Canceled) {
+							slog.Error("event service stopped with errors", slogext.Error(err))
+						}
 					}
+
+					slog.InfoContext(ctx, "event service stopped")
 				}()
 				return nil
 			},
+			OnStop: func(_ context.Context) error {
+				cancel()
+				return nil
+			},
 		})
+
 		return nil
 	}),
 )
