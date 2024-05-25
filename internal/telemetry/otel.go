@@ -126,7 +126,7 @@ func newTraceProvider(ctx context.Context, config utils.Config, serviceResource 
 			}
 
 			exporter, err := otlptracehttp.New(ctx,
-				otlptracehttp.WithEndpointURL("https://otel.baselime.io/v1/"),
+				otlptracehttp.WithEndpointURL("https://otel.baselime.io/v1/traces"),
 				otlptracehttp.WithHeaders(map[string]string{
 					"x-api-key":          baselimeApiKey,
 					"x-baselime-dataset": dataset,
@@ -167,7 +167,7 @@ func newMeterProvider(ctx context.Context, config utils.Config, serviceResource 
 			}
 
 			exporter, err := otlpmetrichttp.New(ctx,
-				otlpmetrichttp.WithEndpointURL("https://otel.baselime.io/v1/"),
+				otlpmetrichttp.WithEndpointURL("https://otel.baselime.io/v1/metrics"),
 				otlpmetrichttp.WithHeaders(map[string]string{
 					"x-api-key":          baselimeApiKey,
 					"x-baselime-dataset": dataset,
@@ -208,7 +208,7 @@ func newLoggerProvider(ctx context.Context, config utils.Config, serviceResource
 			}
 
 			exporter, err := otlploghttp.New(ctx,
-				otlploghttp.WithEndpointURL("https://otel.baselime.io/v1/"),
+				otlploghttp.WithEndpointURL("https://otel.baselime.io/v1/logs"),
 				otlploghttp.WithHeaders(map[string]string{
 					"x-api-key":          baselimeApiKey,
 					"x-baselime-dataset": dataset,
