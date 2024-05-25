@@ -13,7 +13,7 @@ import (
 )
 
 var FxModule = fx.Module(
-	"services/event",
+	"event-aggregator",
 	fx.Provide(NewStorer),
 	fx.Provide(New),
 	fx.Invoke(func(lifecycle fx.Lifecycle, s *Service) error {

@@ -31,7 +31,7 @@ type Storer struct {
 }
 
 func NewStorer(service *Service) (*Storer, error) {
-	const name = "services/event/storer"
+	const name = "event-aggregator/storer"
 
 	tracer := otel.GetTracerProvider().Tracer(name)
 	meter := otel.GetMeterProvider().Meter(name)
