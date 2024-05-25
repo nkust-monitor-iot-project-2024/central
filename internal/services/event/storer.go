@@ -14,7 +14,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -22,48 +21,19 @@ type Storer struct {
 	*Service
 
 	tracer trace.Tracer
-	meter  metric.Meter
 	logger *slog.Logger
-
-	handleEventsCounter   metric.Int64Counter
-	insertedEventsCounter metric.Int64Counter
-	failedEventsCounter   metric.Int64Counter
 }
 
 func NewStorer(service *Service) (*Storer, error) {
 	const name = "event-aggregator/storer"
 
 	tracer := otel.GetTracerProvider().Tracer(name)
-	meter := otel.GetMeterProvider().Meter(name)
 	logger := utils.NewLogger(name)
 
-	handleEventsCounter, err := meter.Int64Counter("event.handled",
-		metric.WithDescription("The total number of events handled by the storer service"),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("create handled events counter: %w", err)
-	}
-	insertedEventsCounter, err := meter.Int64Counter("event.recorded",
-		metric.WithDescription("The total number of events that is successfully stored into the database"),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("create inserted events counter: %w", err)
-	}
-	failedEventsCounter, err := meter.Int64Counter("event.failed",
-		metric.WithDescription("The total number of events that cannot stored into the database"),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("create failed events counter: %w", err)
-	}
-
 	return &Storer{
-		Service:               service,
-		tracer:                tracer,
-		meter:                 meter,
-		logger:                logger,
-		handleEventsCounter:   handleEventsCounter,
-		insertedEventsCounter: insertedEventsCounter,
-		failedEventsCounter:   failedEventsCounter,
+		Service: service,
+		tracer:  tracer,
+		logger:  logger,
 	}, nil
 }
 
@@ -141,12 +111,7 @@ func (s *Storer) Run(ctx context.Context, events <-chan mq.TraceableTypedDeliver
 					attribute.String("device_id", event.Metadata.GetDeviceID())))
 			defer span.End()
 
-			s.handleEventsCounter.Add(ctx, 1)
-			if s.storeSingleEvent(ctx, event.Body, event.Metadata) {
-				s.insertedEventsCounter.Add(ctx, 1)
-			} else {
-				s.failedEventsCounter.Add(ctx, 1)
-			}
+			s.storeSingleEvent(ctx, event.Body, event.Metadata)
 		}()
 	}
 }

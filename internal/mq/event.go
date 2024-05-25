@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
 	"github.com/rabbitmq/amqp091-go"
@@ -145,15 +144,10 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 				defer wg.Done()
 
 				if err := mq.handleRawEventMessage(ctx, rawMessage, eventsCh); err != nil {
-					if err := rawMessage.Reject(false); err != nil {
-						mq.logger.WarnContext(ctx, "reject raw message failed", slogext.Error(err))
-					}
+					_ = rawMessage.Reject(false)
 				} else {
-					if err := rawMessage.Ack(false); err != nil {
-						mq.logger.WarnContext(ctx, "ack raw message failed", slogext.Error(err))
-					}
+					_ = rawMessage.Ack(false)
 				}
-
 			}()
 		}
 
