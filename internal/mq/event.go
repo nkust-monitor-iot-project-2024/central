@@ -136,17 +136,18 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 
 			wg.Add(1)
 			go func() {
+				defer wg.Done()
+
 				ctx, span := mq.tracer.Start(ctx, "mq/subscribe_event/handle_raw_message", trace.WithAttributes(
 					attribute.String("message_id", rawMessage.MessageId),
 				))
 				defer span.End()
 
-				defer wg.Done()
-
 				if err := mq.handleRawEventMessage(ctx, rawMessage, eventsCh); err != nil {
+					span.SetStatus(codes.Error, "handle raw message failed")
+					span.RecordError(err)
+
 					_ = rawMessage.Reject(false)
-				} else {
-					_ = rawMessage.Ack(false)
 				}
 			}()
 		}
