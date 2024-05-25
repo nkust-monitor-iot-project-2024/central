@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
@@ -17,6 +18,7 @@ func NewResource(serviceName string, serviceVersion string) (*resource.Resource,
 		resource.NewWithAttributes(semconv.SchemaURL,
 			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion(serviceVersion),
+			semconv.ServiceInstanceID(uuid.New().String()),
 		),
 	)
 	if err != nil {
