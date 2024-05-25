@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/otelattrext"
-	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
@@ -45,9 +44,49 @@ func (s *Storer) storeSingleEvent(ctx context.Context, event *eventpb.EventMessa
 
 	s.logger.DebugContext(ctx, "storing single event", slog.Any("metadata", metadata))
 
+	status := false
+
+	client := s.repo.Client()
+
+	span.AddEvent("start transaction")
+	tx, err := client.Tx(ctx)
+	if err != nil {
+		span.SetStatus(codes.Error, "failed to start transaction")
+		span.RecordError(err)
+
+		return false
+	}
+	// commit Tx
+	defer func(clientTx *ent.Tx) {
+		switch status {
+		case true:
+			span.AddEvent("commit transaction")
+			err := clientTx.Commit()
+			if err != nil {
+				span.SetStatus(codes.Error, "failed to commit transaction")
+				span.RecordError(err)
+
+				return
+			}
+			span.AddEvent("transaction committed")
+		case false:
+			span.AddEvent("rollback transaction")
+			err := clientTx.Rollback()
+			if err != nil {
+				span.SetStatus(codes.Error, "failed to rollback transaction")
+				span.RecordError(err)
+
+				return
+			}
+			span.AddEvent("transaction rolled back")
+		}
+
+		span.SetStatus(codes.Ok, "transaction finished")
+	}(tx)
+
 	switch eventInfo := event.GetEvent().(type) {
 	case *eventpb.EventMessage_MovementInfo:
-		status := s.storeMovementEvent(ctx, eventInfo.MovementInfo, metadata)
+		status = s.storeMovementEvent(ctx, tx, eventInfo.MovementInfo, metadata)
 
 		span.AddEvent("created event",
 			trace.WithAttributes(otelattrext.UUID("event_id", metadata.GetEventID())))
@@ -59,38 +98,14 @@ func (s *Storer) storeSingleEvent(ctx context.Context, event *eventpb.EventMessa
 	}
 }
 
-func (s *Storer) storeMovementEvent(ctx context.Context, movementInfo *eventpb.MovementInfo, metadata models.Metadata) (status bool) {
+func (s *Storer) storeMovementEvent(ctx context.Context, transaction *ent.Tx, movementInfo *eventpb.MovementInfo, metadata models.Metadata) (status bool) {
 	ctx, span := s.tracer.Start(ctx, "event_storer/store_movement_event")
 	defer span.End()
-
-	client := s.repo.Client()
-	clientTx, err := client.Tx(ctx)
-	if err != nil {
-		span.SetStatus(codes.Error, "failed to start transaction")
-		span.RecordError(err)
-
-		return false
-	}
-	// commit Tx
-	defer func(clientTx *ent.Tx) {
-		switch status {
-		case true:
-			err := clientTx.Commit()
-			if err != nil {
-				s.logger.ErrorContext(ctx, "failed to commit transaction", slogext.Error(err))
-			}
-		case false:
-			err := clientTx.Rollback()
-			if err != nil {
-				s.logger.WarnContext(ctx, "failed to rollback transaction", slogext.Error(err))
-			}
-		}
-	}(clientTx)
 
 	eventID := metadata.GetEventID()
 
 	span.AddEvent("create event with movement information in database")
-	eventModel, err := client.Event.Create().
+	eventModel, err := transaction.Event.Create().
 		SetID(eventID).
 		SetDeviceID(metadata.GetDeviceID()).
 		SetCreatedAt(metadata.GetEmittedAt()).
@@ -100,14 +115,13 @@ func (s *Storer) storeMovementEvent(ctx context.Context, movementInfo *eventpb.M
 		span.SetStatus(codes.Error, "failed to create event with movement information in database")
 		span.RecordError(err)
 
-		status = false
-		return
+		return false
 	}
 	span.AddEvent("created event with movement information in database",
 		trace.WithAttributes(otelattrext.UUID("event_id", eventModel.ID)))
 
 	span.AddEvent("create movement information in database")
-	movementModel, err := client.Movement.Create().
+	movementModel, err := transaction.Movement.Create().
 		AddEvent(eventModel).
 		SetID(uuid.Must(uuid.NewV7())).
 		SetPicture(movementInfo.GetPicture()).
@@ -116,8 +130,7 @@ func (s *Storer) storeMovementEvent(ctx context.Context, movementInfo *eventpb.M
 		span.SetStatus(codes.Error, "failed to create movement information in database")
 		span.RecordError(err)
 
-		status = false
-		return
+		return false
 	}
 	span.AddEvent("created movement information in database",
 		trace.WithAttributes(
@@ -125,8 +138,7 @@ func (s *Storer) storeMovementEvent(ctx context.Context, movementInfo *eventpb.M
 			otelattrext.UUID("event_id", eventModel.ID),
 		))
 
-	status = true
-	return
+	return true
 }
 
 func (s *Storer) Run(ctx context.Context, events <-chan mq.TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]) {
