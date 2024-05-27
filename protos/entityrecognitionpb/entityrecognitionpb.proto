@@ -16,7 +16,7 @@ message RecognizeResponse {
 }
 
 message Entity {
-    string type = 1;
+    string label = 1;
     float x = 2;
     float y = 3;
     float confidence = 4;
