@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package entityrecognitionpb;
+option go_package = "github.com/nkust-monitor-iot-project-2024/central/protos/entityrecognitionpb";
+
+service EntityRecognition {
+    rpc Recognize(RecognizeRequest) returns (RecognizeResponse) {}
+}
+
+message RecognizeRequest {
+    bytes image = 1;
+}
+
+message RecognizeResponse {
+    repeated Entity entities = 1;
+}
+
+message Entity {
+    string type = 1;
+    float x = 2;
+    float y = 3;
+    float confidence = 4;
+    bytes image = 5;  // FIXME: redundant field?
+}
