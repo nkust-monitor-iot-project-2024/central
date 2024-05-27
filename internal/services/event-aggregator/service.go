@@ -19,7 +19,7 @@ var FxModule = fx.Module(
 	"event-aggregator",
 	fx.Provide(NewStorer),
 	fx.Provide(New),
-	fx.Invoke(func(lifecycle fx.Lifecycle, s *Service) error {
+	fx.Invoke(func(lifecycle fx.Lifecycle, shutdowner fx.Shutdowner, s *Service) error {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		lifecycle.Append(fx.Hook{
@@ -30,6 +30,7 @@ var FxModule = fx.Module(
 					if err := s.Run(ctx); err != nil {
 						if !errors.Is(err, context.Canceled) {
 							slog.Error("event service stopped with errors", slogext.Error(err))
+							_ = shutdowner.Shutdown(fx.ExitCode(1))
 						}
 					}
 
