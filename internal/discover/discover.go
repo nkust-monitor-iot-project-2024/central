@@ -9,6 +9,7 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/entityrecognitionpb"
 	"github.com/samber/mo"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -125,7 +126,9 @@ func (d *Discoverer) CreateGRPCClient(ctx context.Context, serviceName string, f
 		clientURI = fallbackURI
 	}
 
-	var dialOptions []grpc.DialOption
+	dialOptions := []grpc.DialOption{
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+	}
 	if cert, ok := transportCredentials.Get(); ok {
 		dialOptions = append(dialOptions, grpc.WithTransportCredentials(cert))
 	} else {
