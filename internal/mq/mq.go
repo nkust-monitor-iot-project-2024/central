@@ -107,7 +107,7 @@ func (mq *amqpMQ) openMQConnection() (*amqp091.Channel, error) {
 }
 
 func (mq *amqpMQ) getPubChan() (*amqp091.Channel, error) {
-	if mq.pubChan == nil {
+	if mq.pubChan == nil || mq.pubChan.IsClosed() {
 		ch, err := mq.openMQConnection()
 		if err != nil {
 			return nil, fmt.Errorf("open connection: %w", err)
@@ -120,7 +120,7 @@ func (mq *amqpMQ) getPubChan() (*amqp091.Channel, error) {
 }
 
 func (mq *amqpMQ) getSubChan() (*amqp091.Channel, error) {
-	if mq.subChan == nil {
+	if mq.subChan == nil || mq.subChan.IsClosed() {
 		ch, err := mq.openMQConnection()
 		if err != nil {
 			return nil, fmt.Errorf("open connection: %w", err)
