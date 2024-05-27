@@ -4,7 +4,6 @@ import (
 	"log/slog"
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
-	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.uber.org/fx/fxevent"
 )
 
@@ -17,7 +16,5 @@ func FxWithLoggerFn() fxevent.Logger {
 
 // NewLogger creates a new slog.Logger that sends logs to the collector service with the given name.
 func NewLogger(name string) *slog.Logger {
-	return otelslog.NewLogger(otelslog.WithInstrumentationScope(instrumentation.Scope{
-		Name: name,
-	}))
+	return otelslog.NewLogger(name)
 }
