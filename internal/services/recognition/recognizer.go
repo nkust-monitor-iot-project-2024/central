@@ -40,7 +40,9 @@ func (r *Recognizer) recognizeEntities(ctx context.Context, image []byte) ([]*en
 	defer span.End()
 
 	span.AddEvent("call EntityRecognitionClient to recognition entities in the image")
-	recognition, err := r.entityRecognitionClient.Recognize(ctx, &entityrecognitionpb.RecognizeRequest{})
+	recognition, err := r.entityRecognitionClient.Recognize(ctx, &entityrecognitionpb.RecognizeRequest{
+		Image: image,
+	})
 	if err != nil {
 		span.SetStatus(codes.Error, "failed to recognize entities in the image")
 		span.RecordError(err)
