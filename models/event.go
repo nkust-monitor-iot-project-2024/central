@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/samber/mo"
 )
 
 // Event represents an event.
@@ -14,6 +15,8 @@ type Event interface {
 	GetDeviceID() string
 	// GetEmittedAt returns the time when this event is emitted.
 	GetEmittedAt() time.Time
+	// GetParentEventID returns the parent event ID if this event is a child event.
+	GetParentEventID() (uuid.UUID, bool)
 	// GetType returns the type of this event.
 	GetType() EventType
 }
@@ -72,9 +75,10 @@ func (m *MoveEvent) GetCycle() float64 {
 
 // Metadata represents an event.
 type Metadata struct {
-	EventID   uuid.UUID `json:"event_id"`
-	DeviceID  string    `json:"device_id"`
-	EmittedAt time.Time `json:"emitted_at"`
+	EventID       uuid.UUID            `json:"event_id"`
+	DeviceID      string               `json:"device_id"`
+	EmittedAt     time.Time            `json:"emitted_at"`
+	ParentEventID mo.Option[uuid.UUID] `json:"parent_event_id"`
 }
 
 func (e *Metadata) GetEventID() uuid.UUID {
@@ -87,6 +91,10 @@ func (e *Metadata) GetDeviceID() string {
 
 func (e *Metadata) GetEmittedAt() time.Time {
 	return e.EmittedAt
+}
+
+func (e *Metadata) GetParentEventID() (uuid.UUID, bool) {
+	return e.ParentEventID.Get()
 }
 
 // Movement represents movement information of an event.

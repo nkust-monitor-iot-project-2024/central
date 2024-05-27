@@ -9,6 +9,7 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/ent"
 	"github.com/nkust-monitor-iot-project-2024/central/ent/event"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/database"
+	"github.com/samber/mo"
 	"go.uber.org/fx"
 )
 
@@ -95,9 +96,10 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 
 func (r *eventRepositoryEnt) transformEvent(ctx context.Context, eventDao *ent.Event, brief bool) (Event, error) {
 	metadata := Metadata{
-		EventID:   eventDao.ID,
-		DeviceID:  eventDao.DeviceID,
-		EmittedAt: eventDao.CreatedAt,
+		EventID:       eventDao.ID,
+		DeviceID:      eventDao.DeviceID,
+		EmittedAt:     eventDao.CreatedAt,
+		ParentEventID: mo.PointerToOption(eventDao.ParentEventID),
 	}
 
 	switch eventDao.Type {
