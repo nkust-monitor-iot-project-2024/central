@@ -47,7 +47,7 @@ func NewStorer(service *Service) (*Storer, error) {
 // and the event to the corresponding store functions (storeMovementEvent),
 // and commits the transaction.
 func (s *Storer) storeSingleEvent(ctx context.Context, event *eventpb.EventMessage, metadata models.Metadata) bool {
-	ctx, span := s.tracer.Start(ctx, "event_storer/store_single_event")
+	ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/store_single_event")
 	defer span.End()
 
 	s.logger.DebugContext(ctx, "storing single event", slog.Any("metadata", metadata))
@@ -110,7 +110,7 @@ func (s *Storer) storeSingleEvent(ctx context.Context, event *eventpb.EventMessa
 
 // storeMovementEvent stores the movement event in the database.
 func (s *Storer) storeMovementEvent(ctx context.Context, transaction *ent.Tx, movementInfo *eventpb.MovementInfo, metadata models.Metadata) (status bool) {
-	ctx, span := s.tracer.Start(ctx, "event_storer/store_movement_event")
+	ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/store_movement_event")
 	defer span.End()
 
 	eventID := metadata.GetEventID()
@@ -159,7 +159,7 @@ func (s *Storer) Run(ctx context.Context, events <-chan mq.TraceableTypedDeliver
 	for event := range events {
 		func() {
 			ctx := trace.ContextWithSpanContext(ctx, event.SpanContext)
-			ctx, span := s.tracer.Start(ctx, "event_storer/run/handle_event",
+			ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/run/handle_event",
 				trace.WithAttributes(
 					otelattrext.UUID("event_id", event.Metadata.GetEventID()),
 					attribute.String("device_id", event.Metadata.GetDeviceID())))
