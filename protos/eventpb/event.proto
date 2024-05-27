@@ -7,12 +7,14 @@ message MovementInfo {
     bytes picture = 2;
 }
 
-message InvaderInfo {
-    bool is_invaded = 1;
+message InvadedInfo {
+    string parent_movement_id = 1;
+    repeated Invader invaders = 2;
 }
 
 message Invader {
-    
+    bytes picture = 1;
+    float confidence = 2;
 }
 
 message EventMessage {
@@ -20,5 +22,6 @@ message EventMessage {
 
     oneof event {
         MovementInfo movement_info = 2;
+        InvadedInfo invaded_info = 3;
     }
 }
