@@ -66,6 +66,8 @@ func (d *Discoverer) DiscoverEntityRecognitionService(ctx context.Context) (enti
 	erClient := entityrecognitionpb.NewEntityRecognitionClient(client)
 	span.AddEvent("created EntityRecognitionClient")
 
+	span.SetStatus(codes.Ok, "discovered entity recognition service")
+
 	return erClient, nil
 }
 
@@ -143,6 +145,8 @@ func (d *Discoverer) CreateGRPCClient(ctx context.Context, serviceName string, f
 		return nil, fmt.Errorf("create new client: %w", err)
 	}
 	span.AddEvent("created grpc client")
+
+	span.SetStatus(codes.Ok, "created gRPC client")
 
 	return conn, nil
 }

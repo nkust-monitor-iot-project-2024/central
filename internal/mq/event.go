@@ -120,6 +120,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 	eventsCh := make(chan TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], 64)
 
 	// handle raw messages
+	span.AddEvent("create a goroutine to handle raw messages")
 	go func() {
 		wg := sync.WaitGroup{}
 
@@ -163,6 +164,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 		close(eventsCh)
 	}()
 
+	span.SetStatus(codes.Ok, "created a subscriber channel of all_v1_events")
 	return eventsCh, nil
 }
 

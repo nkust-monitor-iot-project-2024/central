@@ -2,11 +2,13 @@ package recognition
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/entityrecognitionpb"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -37,9 +39,16 @@ func (r *Recognizer) recognizeEntities(ctx context.Context, image []byte) ([]*en
 	ctx, span := r.tracer.Start(ctx, "recognizeEntities")
 	defer span.End()
 
-	span.AddEvent("call EntityRecognitionClient to recognize entities in the image")
-	recognize, err := r.entityRecognitionClient.Recognize(ctx, &entityrecognitionpb.RecognizeRequest{})
+	span.AddEvent("call EntityRecognitionClient to recognition entities in the image")
+	recognition, err := r.entityRecognitionClient.Recognize(ctx, &entityrecognitionpb.RecognizeRequest{})
 	if err != nil {
-		return nil, err
+		span.SetStatus(codes.Error, "failed to recognize entities in the image")
+		span.RecordError(err)
+
+		return nil, fmt.Errorf("recognize entities: %w", err)
 	}
+	span.AddEvent("done call EntityRecognitionClient to recognition entities in the image")
+
+	span.SetStatus(codes.Ok, "recognized entities in the image")
+	return recognition.Entities, nil
 }

@@ -98,6 +98,8 @@ func (s *Storer) storeSingleEvent(ctx context.Context, event *eventpb.EventMessa
 
 		span.AddEvent("created event",
 			trace.WithAttributes(otelattrext.UUID("event_id", metadata.GetEventID())))
+		span.SetStatus(codes.Ok, "event stored successfully")
+
 		return status
 	default:
 		span.SetStatus(codes.Error, "event type is not implemented")
@@ -146,6 +148,8 @@ func (s *Storer) storeMovementEvent(ctx context.Context, transaction *ent.Tx, mo
 			otelattrext.UUID("movement_id", movementModel.ID),
 			otelattrext.UUID("event_id", eventModel.ID),
 		))
+
+	span.SetStatus(codes.Ok, "created movement information in database")
 
 	return true
 }
