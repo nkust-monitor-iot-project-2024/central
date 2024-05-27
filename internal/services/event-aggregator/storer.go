@@ -1,4 +1,4 @@
-package event
+package event_aggregator
 
 import (
 	"context"

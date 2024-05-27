@@ -1,4 +1,4 @@
-package recognition
+package recognition_facade
 
 import (
 	"context"

@@ -1,9 +1,9 @@
-// Package recognition is the core logic of recognition-facade service.
+// Package recognition_facade is the core logic of recognition-facade service.
 //
 // It retrieves the generic event (like MovementEvent, which reveals nothing about the entities in the image)
 // from the message queue, and calls the corresponding EntityRecognition and SimilarityAnalysis (wip) service to
 // get further information of an image or event.
-package recognition
+package recognition_facade
 
 import (
 	"context"

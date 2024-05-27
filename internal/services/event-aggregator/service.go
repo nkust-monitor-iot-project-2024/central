@@ -1,5 +1,5 @@
-// Package event is the core logic of the service "event-aggregator".
-package event
+// Package event_aggregator is the core logic of the service "event-aggregator".
+package event_aggregator
 
 import (
 	"context"
