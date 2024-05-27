@@ -148,13 +148,19 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 				))
 				defer span.End()
 
-				span.AddEvent("delegating event to handleRawEventMessage")
-				if err := mq.handleRawEventMessage(ctx, rawMessage, eventsCh); err != nil {
-					span.SetStatus(codes.Error, "handle raw message failed")
+				span.AddEvent("unmarshal raw event message")
+				typedDelivery, err := mq.unmarshalRawEventMessage(ctx, rawMessage)
+				if err != nil {
+					span.SetStatus(codes.Error, "failed to unmarshal raw event message")
 					span.RecordError(err)
 
 					_ = rawMessage.Reject(false)
 				}
+				span.AddEvent("done unmarshalled raw event message")
+
+				span.AddEvent("send unmarshalled event message to eventsCh")
+				eventsCh <- *typedDelivery
+				span.AddEvent("done sent unmarshalled event message to eventsCh")
 
 				span.SetStatus(codes.Ok, "handle succeed")
 			}()
@@ -168,19 +174,19 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 	return eventsCh, nil
 }
 
-// handleRawEventMessage handles the received amqp091.Delivery, process it, and send it to ch.
-func (mq *amqpMQ) handleRawEventMessage(ctx context.Context, message amqp091.Delivery, ch chan<- TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]) error {
+// unmarshalRawEventMessage handles the received amqp091.Delivery, process it, and send it to ch.
+func (mq *amqpMQ) unmarshalRawEventMessage(ctx context.Context, message amqp091.Delivery) (*TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], error) {
 	mq.logger.DebugContext(ctx, "handle raw message", slog.Any("message", message))
 
 	ctx = mq.propagator.Extract(ctx, NewMessageCarrier(message))
-	ctx, span := mq.tracer.Start(ctx, "mq/handle_raw_event_message")
+	ctx, span := mq.tracer.Start(ctx, "mq/unmarshal_raw_event_message")
 	defer span.End()
 
 	span.AddEvent("extract metadata from header")
 	if message.ContentType != "application/json" || message.Type != "eventpb.EventMessage" || message.Timestamp.IsZero() {
 		span.SetStatus(codes.Error, "invalid header")
 
-		return errors.New("invalid header")
+		return nil, errors.New("invalid header")
 	}
 
 	metadata, err := extractMetadataFromHeader(message)
@@ -188,7 +194,7 @@ func (mq *amqpMQ) handleRawEventMessage(ctx context.Context, message amqp091.Del
 		span.SetStatus(codes.Error, "extract metadata failed")
 		span.RecordError(err)
 
-		return fmt.Errorf("extract metadata: %w", err)
+		return nil, fmt.Errorf("extract metadata: %w", err)
 	}
 	span.AddEvent("extracted metadata from header")
 
@@ -199,27 +205,24 @@ func (mq *amqpMQ) handleRawEventMessage(ctx context.Context, message amqp091.Del
 		span.SetStatus(codes.Error, "unmarshal failed")
 		span.RecordError(err)
 
-		return fmt.Errorf("unmarshal: %w", err)
+		return nil, fmt.Errorf("unmarshal: %w", err)
 	}
 	span.AddEvent("unmarshaled message body")
 
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		span.SetStatus(codes.Unset, "cancelled")
+		return nil, ctx.Err()
 	default:
-		span.AddEvent("pass Delivery to channel for further processing")
-		ch <- TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]{
+		span.SetStatus(codes.Ok, "done handling raw message")
+		return &TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]{
 			TypedDelivery: TypedDelivery[models.Metadata, *eventpb.EventMessage]{
 				Delivery: message,
 				Metadata: metadata,
 				Body:     event,
 			},
 			SpanContext: span.SpanContext(),
-		}
-		span.AddEvent("passed Delivery to channel for further processing")
-
-		span.SetStatus(codes.Ok, "done handling raw message")
-		return nil
+		}, nil
 	}
 }
 
