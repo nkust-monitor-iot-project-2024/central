@@ -61,6 +61,11 @@ func DeviceID(v string) predicate.Event {
 	return predicate.Event(sql.FieldEQ(FieldDeviceID, v))
 }
 
+// ParentEventID applies equality check predicate on the "parent_event_id" field. It's identical to ParentEventIDEQ.
+func ParentEventID(v uuid.UUID) predicate.Event {
+	return predicate.Event(sql.FieldEQ(FieldParentEventID, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Event {
 	return predicate.Event(sql.FieldEQ(FieldCreatedAt, v))
@@ -149,6 +154,46 @@ func DeviceIDEqualFold(v string) predicate.Event {
 // DeviceIDContainsFold applies the ContainsFold predicate on the "device_id" field.
 func DeviceIDContainsFold(v string) predicate.Event {
 	return predicate.Event(sql.FieldContainsFold(FieldDeviceID, v))
+}
+
+// ParentEventIDEQ applies the EQ predicate on the "parent_event_id" field.
+func ParentEventIDEQ(v uuid.UUID) predicate.Event {
+	return predicate.Event(sql.FieldEQ(FieldParentEventID, v))
+}
+
+// ParentEventIDNEQ applies the NEQ predicate on the "parent_event_id" field.
+func ParentEventIDNEQ(v uuid.UUID) predicate.Event {
+	return predicate.Event(sql.FieldNEQ(FieldParentEventID, v))
+}
+
+// ParentEventIDIn applies the In predicate on the "parent_event_id" field.
+func ParentEventIDIn(vs ...uuid.UUID) predicate.Event {
+	return predicate.Event(sql.FieldIn(FieldParentEventID, vs...))
+}
+
+// ParentEventIDNotIn applies the NotIn predicate on the "parent_event_id" field.
+func ParentEventIDNotIn(vs ...uuid.UUID) predicate.Event {
+	return predicate.Event(sql.FieldNotIn(FieldParentEventID, vs...))
+}
+
+// ParentEventIDGT applies the GT predicate on the "parent_event_id" field.
+func ParentEventIDGT(v uuid.UUID) predicate.Event {
+	return predicate.Event(sql.FieldGT(FieldParentEventID, v))
+}
+
+// ParentEventIDGTE applies the GTE predicate on the "parent_event_id" field.
+func ParentEventIDGTE(v uuid.UUID) predicate.Event {
+	return predicate.Event(sql.FieldGTE(FieldParentEventID, v))
+}
+
+// ParentEventIDLT applies the LT predicate on the "parent_event_id" field.
+func ParentEventIDLT(v uuid.UUID) predicate.Event {
+	return predicate.Event(sql.FieldLT(FieldParentEventID, v))
+}
+
+// ParentEventIDLTE applies the LTE predicate on the "parent_event_id" field.
+func ParentEventIDLTE(v uuid.UUID) predicate.Event {
+	return predicate.Event(sql.FieldLTE(FieldParentEventID, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

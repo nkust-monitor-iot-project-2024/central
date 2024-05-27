@@ -15,7 +15,7 @@ type Movement struct {
 // Fields of the Movement.
 func (Movement) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.Must(uuid.NewV7())),
+		field.UUID("id", uuid.New()),
 		field.Bytes("picture"),
 	}
 }

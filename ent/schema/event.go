@@ -17,9 +17,10 @@ type Event struct {
 // Fields of the Event.
 func (Event) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.Must(uuid.NewV7())),
+		field.UUID("id", uuid.New()),
 		field.Enum("type").Values("invaded", "movement", "move"),
 		field.String("device_id"),
+		field.UUID("parent_event_id", uuid.New()).Nillable(),
 		field.Time("created_at").Default(time.Now),
 	}
 }

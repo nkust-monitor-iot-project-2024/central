@@ -15,7 +15,7 @@ type Move struct {
 // Fields of the Move.
 func (Move) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.Must(uuid.NewV7())),
+		field.UUID("id", uuid.New()),
 		field.Float("cycle"),
 	}
 }

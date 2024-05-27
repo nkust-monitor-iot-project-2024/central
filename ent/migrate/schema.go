@@ -13,6 +13,7 @@ var (
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "type", Type: field.TypeEnum, Enums: []string{"invaded", "movement", "move"}},
 		{Name: "device_id", Type: field.TypeString},
+		{Name: "parent_event_id", Type: field.TypeUUID},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// EventsTable holds the schema information for the "events" table.

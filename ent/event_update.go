@@ -60,6 +60,20 @@ func (eu *EventUpdate) SetNillableDeviceID(s *string) *EventUpdate {
 	return eu
 }
 
+// SetParentEventID sets the "parent_event_id" field.
+func (eu *EventUpdate) SetParentEventID(u uuid.UUID) *EventUpdate {
+	eu.mutation.SetParentEventID(u)
+	return eu
+}
+
+// SetNillableParentEventID sets the "parent_event_id" field if the given value is not nil.
+func (eu *EventUpdate) SetNillableParentEventID(u *uuid.UUID) *EventUpdate {
+	if u != nil {
+		eu.SetParentEventID(*u)
+	}
+	return eu
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (eu *EventUpdate) SetCreatedAt(t time.Time) *EventUpdate {
 	eu.mutation.SetCreatedAt(t)
@@ -241,6 +255,9 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := eu.mutation.DeviceID(); ok {
 		_spec.SetField(event.FieldDeviceID, field.TypeString, value)
+	}
+	if value, ok := eu.mutation.ParentEventID(); ok {
+		_spec.SetField(event.FieldParentEventID, field.TypeUUID, value)
 	}
 	if value, ok := eu.mutation.CreatedAt(); ok {
 		_spec.SetField(event.FieldCreatedAt, field.TypeTime, value)
@@ -424,6 +441,20 @@ func (euo *EventUpdateOne) SetDeviceID(s string) *EventUpdateOne {
 func (euo *EventUpdateOne) SetNillableDeviceID(s *string) *EventUpdateOne {
 	if s != nil {
 		euo.SetDeviceID(*s)
+	}
+	return euo
+}
+
+// SetParentEventID sets the "parent_event_id" field.
+func (euo *EventUpdateOne) SetParentEventID(u uuid.UUID) *EventUpdateOne {
+	euo.mutation.SetParentEventID(u)
+	return euo
+}
+
+// SetNillableParentEventID sets the "parent_event_id" field if the given value is not nil.
+func (euo *EventUpdateOne) SetNillableParentEventID(u *uuid.UUID) *EventUpdateOne {
+	if u != nil {
+		euo.SetParentEventID(*u)
 	}
 	return euo
 }
@@ -639,6 +670,9 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 	}
 	if value, ok := euo.mutation.DeviceID(); ok {
 		_spec.SetField(event.FieldDeviceID, field.TypeString, value)
+	}
+	if value, ok := euo.mutation.ParentEventID(); ok {
+		_spec.SetField(event.FieldParentEventID, field.TypeUUID, value)
 	}
 	if value, ok := euo.mutation.CreatedAt(); ok {
 		_spec.SetField(event.FieldCreatedAt, field.TypeTime, value)

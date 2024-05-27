@@ -42,6 +42,7 @@ type EventMutation struct {
 	id               *uuid.UUID
 	_type            *event.Type
 	device_id        *string
+	parent_event_id  *uuid.UUID
 	created_at       *time.Time
 	clearedFields    map[string]struct{}
 	invaders         map[uuid.UUID]struct{}
@@ -232,6 +233,42 @@ func (m *EventMutation) OldDeviceID(ctx context.Context) (v string, err error) {
 // ResetDeviceID resets all changes to the "device_id" field.
 func (m *EventMutation) ResetDeviceID() {
 	m.device_id = nil
+}
+
+// SetParentEventID sets the "parent_event_id" field.
+func (m *EventMutation) SetParentEventID(u uuid.UUID) {
+	m.parent_event_id = &u
+}
+
+// ParentEventID returns the value of the "parent_event_id" field in the mutation.
+func (m *EventMutation) ParentEventID() (r uuid.UUID, exists bool) {
+	v := m.parent_event_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldParentEventID returns the old "parent_event_id" field's value of the Event entity.
+// If the Event object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EventMutation) OldParentEventID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldParentEventID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldParentEventID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldParentEventID: %w", err)
+	}
+	return oldValue.ParentEventID, nil
+}
+
+// ResetParentEventID resets all changes to the "parent_event_id" field.
+func (m *EventMutation) ResetParentEventID() {
+	m.parent_event_id = nil
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -466,12 +503,15 @@ func (m *EventMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *EventMutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 4)
 	if m._type != nil {
 		fields = append(fields, event.FieldType)
 	}
 	if m.device_id != nil {
 		fields = append(fields, event.FieldDeviceID)
+	}
+	if m.parent_event_id != nil {
+		fields = append(fields, event.FieldParentEventID)
 	}
 	if m.created_at != nil {
 		fields = append(fields, event.FieldCreatedAt)
@@ -488,6 +528,8 @@ func (m *EventMutation) Field(name string) (ent.Value, bool) {
 		return m.GetType()
 	case event.FieldDeviceID:
 		return m.DeviceID()
+	case event.FieldParentEventID:
+		return m.ParentEventID()
 	case event.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -503,6 +545,8 @@ func (m *EventMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldType(ctx)
 	case event.FieldDeviceID:
 		return m.OldDeviceID(ctx)
+	case event.FieldParentEventID:
+		return m.OldParentEventID(ctx)
 	case event.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -527,6 +571,13 @@ func (m *EventMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDeviceID(v)
+		return nil
+	case event.FieldParentEventID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetParentEventID(v)
 		return nil
 	case event.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -589,6 +640,9 @@ func (m *EventMutation) ResetField(name string) error {
 		return nil
 	case event.FieldDeviceID:
 		m.ResetDeviceID()
+		return nil
+	case event.FieldParentEventID:
+		m.ResetParentEventID()
 		return nil
 	case event.FieldCreatedAt:
 		m.ResetCreatedAt()
