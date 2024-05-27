@@ -21,3 +21,6 @@ tasks:
     deps: [protoc]
     cmds:
       - go build -o out/service-event-aggregator ./cmd/event-aggregator
+
+  service-all:
+    deps: [service-event-aggregator]

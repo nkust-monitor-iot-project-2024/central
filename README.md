@@ -12,6 +12,10 @@ and the gRPC/Protobuf definition, OpenTelemetry, MQ, database modules.
 This project is highly optimized for [Zeabur](https://zeabur.com),
 which is the recommended PaaS for this IoT Monitor project.
 
+You should prepare your PostgreSQL, RabbitMQ and EntityRecognition (wip) instance.
+Besides, you should register a [Baselime](https://baselime.io) account,
+create an environment, and get the API key for telemetry.
+
 Place the following config.toml in the working directory or `/etc/iotmonitor/config.toml`, `~/.config/iotmonitor/config.toml`:
 
 ```toml
@@ -38,15 +42,17 @@ tls = { cert_file = "/etc/iotmonitor/services/entityrecognition/cert.pem", key_f
 address = "${RABBITMQ_URI}"
 ```
 
-Then build the protobuf and `cmd/[service name]/main.go`, and run the binary:
+To build the service, you should install [Taskfile runner](https://taskfile.dev/usage/), then you can run the command to build the microservices:
 
 ```bash
-bash scripts/protoc.sh
-go build -o event-aggregator cmd/event-aggregator/main.go 
+task service-event-aggregator  # task service-[service name], single service
+task service-all               # all services
 ```
 
+Then you can run the service:
+
 ```bash
-./event-aggregator
+./out/event-aggregator
 ```
 
 ## Development
@@ -64,6 +70,10 @@ If you change the ent schema, you should run the following command to update the
 ```bash
 go generate ./ent
 ```
+
+## Production deployment
+
+wip (Zeabur template)
 
 ## License & Author
 
