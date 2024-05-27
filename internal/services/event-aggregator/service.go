@@ -63,9 +63,6 @@ func New(repo models.EntEventRepository, mq mq.MessageQueue) *Service {
 
 // Run creates the sub-service (Storer) and blocks until something wrong or the context is canceled.
 func (s *Service) Run(ctx context.Context) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	wg := sync.WaitGroup{}
 	storer, err := NewStorer(s)
 	if err != nil {
@@ -84,5 +81,5 @@ func (s *Service) Run(ctx context.Context) error {
 	}()
 
 	wg.Wait()
-	return nil
+	return ctx.Err()
 }
