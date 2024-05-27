@@ -36,6 +36,7 @@ var FxModule = fx.Module("amqp-mq", fx.Provide(func(lifecycle fx.Lifecycle, conf
 // It provides the high-level interface (such as EventSubscriber) to operate with the message queue.
 type MessageQueue interface {
 	EventSubscriber
+	MovementEventSubscriber
 
 	// Close closes the message queue.
 	//
