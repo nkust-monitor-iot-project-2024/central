@@ -1,0 +1,23 @@
+version: '3'
+
+tasks:
+  protoc:
+    cmds:
+      - bash scripts/protoc.sh
+
+  go-generate:
+    cmds:
+      - go generate ./...
+
+  go-mod-tidy:
+    internal: true
+    cmds:
+      - go mod tidy
+
+  generate:
+    deps: [protoc, go-generate, go-mod-tidy]
+
+  service-event-aggregator:
+    deps: [protoc]
+    cmds:
+      - go build -o out/service-event-aggregator ./cmd/event-aggregator
