@@ -17,8 +17,10 @@ message RecognizeResponse {
 
 message Entity {
     string label = 1;
-    float x = 2;
-    float y = 3;
+    float x1 = 2;
+    float x2 = 6;
+    float y1 = 3;
+    float y2 = 7;
     float confidence = 4;
     bytes image = 5;  // FIXME: redundant field?
 }
