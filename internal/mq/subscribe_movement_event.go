@@ -34,8 +34,18 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 	_, span := mq.tracer.Start(ctx, "mq/subscribe_movement_event")
 	defer span.End()
 
+	span.AddEvent("prepare AMQP [subscribe] channel")
+	mqChannel, err := mq.getSubChan()
+	if err != nil {
+		span.SetStatus(codes.Error, "get subscribe channel failed")
+		span.RecordError(err)
+
+		return nil, fmt.Errorf("get subscribe channel: %w", err)
+	}
+	span.AddEvent("prepared AMQP [subscribe] channel")
+
 	span.AddEvent("prepare AMQP queue")
-	err := mq.channel.ExchangeDeclare(
+	err = mqChannel.ExchangeDeclare(
 		"events_topic",
 		"topic",
 		true,
@@ -51,8 +61,8 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 		return nil, fmt.Errorf("declare exchange: %w", err)
 	}
 
-	queue, err := mq.channel.QueueDeclare(
-		"movement_v1_events",
+	queue, err := mqChannel.QueueDeclare(
+		string(models.EventTypeMovement)+"_v1_events",
 		true,
 		false,
 		false,
@@ -66,9 +76,9 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 		return nil, fmt.Errorf("declare queue: %w", err)
 	}
 
-	err = mq.channel.QueueBind(
+	err = mqChannel.QueueBind(
 		queue.Name,
-		"event.v1.movement",
+		"event.v1."+string(models.EventTypeMovement),
 		"events_topic",
 		false,
 		nil)
@@ -81,7 +91,7 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 	span.AddEvent("prepared the AMQP queue")
 
 	span.AddEvent("set QoS of the channel")
-	if err := mq.channel.Qos(64, 0, false); err != nil {
+	if err := mqChannel.Qos(64, 0, false); err != nil {
 		span.SetStatus(codes.Error, "set QoS failed")
 		span.RecordError(err)
 
@@ -90,7 +100,7 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 	span.AddEvent("done setting QoS of the channel")
 
 	span.AddEvent("prepare raw message channel from AMQP")
-	rawMessageCh, err := mq.channel.ConsumeWithContext(
+	rawMessageCh, err := mqChannel.ConsumeWithContext(
 		ctx,
 		queue.Name,
 		"",
@@ -120,7 +130,7 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 				slog.Debug("fuck, why context is cancelled??")
 				break
 			}
-			if mq.channel.IsClosed() {
+			if mqChannel.IsClosed() {
 				// If the channel is closed, we may receive a lot of
 				// zero-value messages, which is not expected.
 				slog.Debug("fuck, why channel is cancelled??", slog.Bool("ctxCancelled", ctx.Err() != nil))
@@ -178,6 +188,6 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 		close(eventsCh)
 	}()
 
-	span.SetStatus(codes.Ok, "created a subscriber channel of movement_v1_events")
+	span.SetStatus(codes.Ok, "created a subscriber channel of "+string(models.EventTypeMovement)+"_v1_events")
 	return eventsCh, nil
 }

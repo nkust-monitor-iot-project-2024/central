@@ -4,6 +4,7 @@ package mq
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -38,6 +39,8 @@ type MessageQueue interface {
 	EventSubscriber
 	MovementEventSubscriber
 
+	EventPublisher
+
 	// Close closes the message queue.
 	//
 	// If you get this instance from FxModule, you should never call it since FxModule has handled it.
@@ -46,12 +49,21 @@ type MessageQueue interface {
 
 // amqpMQ is the AMQP-based implementation of the MessageQueue.
 type amqpMQ struct {
-	channel *amqp091.Channel
+	mqAddress string
+
+	// pub/sub separated channels as the AMQP library advised.
+	// you should always call getPubChan to get the channel singleton
+	// (it handles the connection opening and closing).
+
+	pubChan *amqp091.Channel
+	subChan *amqp091.Channel
 
 	propagator propagation.TextMapPropagator
 	tracer     trace.Tracer
 	logger     *slog.Logger
 }
+
+var errMQAddressNotSet = errors.New("rabbitmq address is not set")
 
 // ConnectAmqp connects to the AMQP message queue.
 //
@@ -63,12 +75,25 @@ func ConnectAmqp(config utils.Config) (MessageQueue, error) {
 	tracer := otel.GetTracerProvider().Tracer(name)
 	logger := utils.NewLogger(name)
 
-	amqpAddress := config.String("mq.address")
-	if amqpAddress == "" {
-		return nil, fmt.Errorf("rabbitmq address is not set")
+	mqAddress := config.String("mq.address")
+	if mqAddress == "" {
+		return nil, errMQAddressNotSet
 	}
 
-	conn, err := amqp091.Dial(amqpAddress)
+	return &amqpMQ{
+		mqAddress:  config.String("mq.address"),
+		propagator: propagator,
+		tracer:     tracer,
+		logger:     logger,
+	}, nil
+}
+
+func (mq *amqpMQ) openMQConnection() (*amqp091.Channel, error) {
+	if mq.mqAddress == "" {
+		return nil, errMQAddressNotSet
+	}
+
+	conn, err := amqp091.Dial(mq.mqAddress)
 	if err != nil {
 		return nil, fmt.Errorf("connect to rabbitmq: %w", err)
 	}
@@ -78,19 +103,48 @@ func ConnectAmqp(config utils.Config) (MessageQueue, error) {
 		return nil, fmt.Errorf("open channel: %w", err)
 	}
 
-	return &amqpMQ{
-		channel:    ch,
-		propagator: propagator,
-		tracer:     tracer,
-		logger:     logger,
-	}, nil
+	return ch, nil
+}
+
+func (mq *amqpMQ) getPubChan() (*amqp091.Channel, error) {
+	if mq.pubChan == nil {
+		ch, err := mq.openMQConnection()
+		if err != nil {
+			return nil, fmt.Errorf("open connection: %w", err)
+		}
+
+		mq.pubChan = ch
+	}
+
+	return mq.pubChan, nil
+}
+
+func (mq *amqpMQ) getSubChan() (*amqp091.Channel, error) {
+	if mq.subChan == nil {
+		ch, err := mq.openMQConnection()
+		if err != nil {
+			return nil, fmt.Errorf("open connection: %w", err)
+		}
+
+		mq.subChan = ch
+	}
+
+	return mq.subChan, nil
 }
 
 // Close closes the AMQP message queue.
-func (mq *amqpMQ) Close() error {
-	if err := mq.channel.Close(); err != nil {
-		return fmt.Errorf("close channel: %w", err)
+func (mq *amqpMQ) Close() (err error) {
+	if mq.pubChan != nil {
+		if err := mq.pubChan.Close(); err != nil {
+			err = errors.Join(err, fmt.Errorf("close publish channel: %w", err))
+		}
 	}
 
-	return nil
+	if mq.subChan != nil {
+		if err := mq.subChan.Close(); err != nil {
+			err = errors.Join(err, fmt.Errorf("close subscribe channel: %w", err))
+		}
+	}
+
+	return
 }
