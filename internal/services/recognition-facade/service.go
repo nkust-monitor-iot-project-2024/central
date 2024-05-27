@@ -49,11 +49,7 @@ func (s *Service) Run(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := recognizer.Run(ctx, movementEventChan)
-		if err != nil {
-			return
-		}
-		storer.Run(ctx, movementEventChan)
+		recognizer.Run(ctx, movementEventChan)
 	}()
 
 	wg.Wait()

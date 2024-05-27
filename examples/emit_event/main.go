@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
+	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
 	"github.com/rabbitmq/amqp091-go"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -69,7 +70,7 @@ func main() {
 			}
 
 			for j := 0; j < 10; j++ {
-				err = ch.Publish("events_topic", "event.v1.movement", false, false, amqp091.Publishing{
+				err = ch.Publish("events_topic", "event.v1."+string(models.EventTypeMovement), false, false, amqp091.Publishing{
 					Headers:       nil,
 					ContentType:   "application/json",
 					DeliveryMode:  0,

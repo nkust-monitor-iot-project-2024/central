@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/nkust-monitor-iot-project-2024/central/internal/mq/amqpext"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
 	"github.com/rabbitmq/amqp091-go"
@@ -54,7 +55,7 @@ func (mq *amqpMQ) PublishEvent(ctx context.Context, metadata models.Metadata, ev
 	span.AddEvent("prepared AMQP exchange")
 
 	span.AddEvent("publish message to AMQP")
-	key, publishing, err := mq.createPublishingMessage(metadata, event)
+	key, publishing, err := mq.createPublishingMessage(ctx, metadata, event)
 	if err != nil {
 		span.SetStatus(codes.Error, "create publishing message failed")
 		span.RecordError(err)
@@ -87,7 +88,7 @@ func (mq *amqpMQ) PublishEvent(ctx context.Context, metadata models.Metadata, ev
 	return nil
 }
 
-func (mq *amqpMQ) createPublishingMessage(metadata models.Metadata, event *eventpb.EventMessage) (key string, publishing amqp091.Publishing, err error) {
+func (mq *amqpMQ) createPublishingMessage(ctx context.Context, metadata models.Metadata, event *eventpb.EventMessage) (key string, publishing amqp091.Publishing, err error) {
 	var eventType models.EventType
 	switch event.GetEvent().(type) {
 	case *eventpb.EventMessage_MovementInfo:
@@ -97,6 +98,10 @@ func (mq *amqpMQ) createPublishingMessage(metadata models.Metadata, event *event
 	default:
 		return "", amqp091.Publishing{}, fmt.Errorf("unknown event type: %T", event.GetEvent())
 	}
+
+	// Inject the context into the header, so we can trace the span across the system boundaries.
+	header := amqp091.Table{}
+	mq.propagator.Inject(ctx, amqpext.NewHeaderSupplier(header))
 
 	marshalledBody, err := protojson.Marshal(event)
 	if err != nil {
@@ -109,6 +114,7 @@ func (mq *amqpMQ) createPublishingMessage(metadata models.Metadata, event *event
 		Timestamp:   metadata.GetEmittedAt(),
 		Type:        "eventpb.EventMessage",
 		AppId:       metadata.GetDeviceID(),
+		Headers:     header,
 		Body:        marshalledBody,
 	}, nil
 }

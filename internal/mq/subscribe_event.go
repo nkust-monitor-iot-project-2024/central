@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/nkust-monitor-iot-project-2024/central/internal/mq/amqpext"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
 	"github.com/rabbitmq/amqp091-go"
@@ -189,7 +190,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 func (mq *amqpMQ) unmarshalRawEventMessage(ctx context.Context, message amqp091.Delivery) (*TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], error) {
 	mq.logger.DebugContext(ctx, "handle raw message", slog.Any("message", message))
 
-	ctx = mq.propagator.Extract(ctx, NewMessageCarrier(message))
+	ctx = mq.propagator.Extract(ctx, amqpext.NewHeaderSupplier(message.Headers))
 	ctx, span := mq.tracer.Start(ctx, "mq/unmarshal_raw_event_message")
 	defer span.End()
 

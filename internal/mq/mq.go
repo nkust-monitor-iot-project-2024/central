@@ -133,16 +133,16 @@ func (mq *amqpMQ) getSubChan() (*amqp091.Channel, error) {
 }
 
 // Close closes the AMQP message queue.
-func (mq *amqpMQ) Close() (err error) {
+func (mq *amqpMQ) Close() (closeErr error) {
 	if mq.pubChan != nil {
 		if err := mq.pubChan.Close(); err != nil {
-			err = errors.Join(err, fmt.Errorf("close publish channel: %w", err))
+			closeErr = errors.Join(closeErr, fmt.Errorf("close publish channel: %w", err))
 		}
 	}
 
 	if mq.subChan != nil {
 		if err := mq.subChan.Close(); err != nil {
-			err = errors.Join(err, fmt.Errorf("close subscribe channel: %w", err))
+			closeErr = errors.Join(closeErr, fmt.Errorf("close subscribe channel: %w", err))
 		}
 	}
 
