@@ -7,6 +7,8 @@ package recognition_facade
 
 import (
 	"context"
+	"fmt"
+	"sync"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/entityrecognitionpb"
@@ -33,5 +35,27 @@ func New(messageQueue mq.MessageQueue, entityRecognitionClient entityrecognition
 
 // Run runs the service and blocks until the service is stopped by ctx or something wrong.
 func (s *Service) Run(ctx context.Context) error {
-	return nil
+	wg := sync.WaitGroup{}
+	recognizer, err := NewRecognizer(s)
+	if err != nil {
+		return fmt.Errorf("initialize recognizer: %w", err)
+	}
+
+	movementEventChan, err := s.messageQueue.SubscribeMovementEvent(ctx)
+	if err != nil {
+		return fmt.Errorf("subscribe to movement event: %w", err)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := recognizer.Run(ctx, movementEventChan)
+		if err != nil {
+			return
+		}
+		storer.Run(ctx, movementEventChan)
+	}()
+
+	wg.Wait()
+	return ctx.Err()
 }
