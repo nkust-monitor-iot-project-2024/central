@@ -155,6 +155,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 					span.RecordError(err)
 
 					_ = rawMessage.Reject(false)
+					return
 				}
 				span.AddEvent("done unmarshalled raw event message")
 
