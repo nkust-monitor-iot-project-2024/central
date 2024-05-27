@@ -7,6 +7,14 @@ message MovementInfo {
     bytes picture = 2;
 }
 
+message InvaderInfo {
+    bool is_invaded = 1;
+}
+
+message Invader {
+    
+}
+
 message EventMessage {
     reserved 1;   // metadata
 

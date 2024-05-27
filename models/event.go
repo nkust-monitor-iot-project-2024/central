@@ -8,9 +8,13 @@ import (
 
 // Event represents an event.
 type Event interface {
+	// GetEventID returns the unique event ID.
 	GetEventID() uuid.UUID
+	// GetDeviceID returns the device ID that triggers this event.
 	GetDeviceID() string
+	// GetEmittedAt returns the time when this event is emitted.
 	GetEmittedAt() time.Time
+	// GetType returns the type of this event.
 	GetType() EventType
 }
 

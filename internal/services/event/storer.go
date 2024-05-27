@@ -18,6 +18,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// Storer is the service that retrieves Event from mq.MessageQueue
+// and stores them in the database.
 type Storer struct {
 	*Service
 
@@ -25,6 +27,7 @@ type Storer struct {
 	logger *slog.Logger
 }
 
+// NewStorer creates a new Storer.
 func NewStorer(service *Service) (*Storer, error) {
 	const name = "event-aggregator/storer"
 
@@ -38,6 +41,11 @@ func NewStorer(service *Service) (*Storer, error) {
 	}, nil
 }
 
+// storeSingleEvent stores a single event in the database.
+//
+// It creates the transaction in the database connection, delegates the transaction
+// and the event to the corresponding store functions (storeMovementEvent),
+// and commits the transaction.
 func (s *Storer) storeSingleEvent(ctx context.Context, event *eventpb.EventMessage, metadata models.Metadata) bool {
 	ctx, span := s.tracer.Start(ctx, "event_storer/store_single_event")
 	defer span.End()
@@ -98,6 +106,7 @@ func (s *Storer) storeSingleEvent(ctx context.Context, event *eventpb.EventMessa
 	}
 }
 
+// storeMovementEvent stores the movement event in the database.
 func (s *Storer) storeMovementEvent(ctx context.Context, transaction *ent.Tx, movementInfo *eventpb.MovementInfo, metadata models.Metadata) (status bool) {
 	ctx, span := s.tracer.Start(ctx, "event_storer/store_movement_event")
 	defer span.End()
@@ -141,6 +150,7 @@ func (s *Storer) storeMovementEvent(ctx context.Context, transaction *ent.Tx, mo
 	return true
 }
 
+// Run retrieves the events continuously from the channel until something wrong or the context is canceled.
 func (s *Storer) Run(ctx context.Context, events <-chan mq.TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]) {
 	for event := range events {
 		func() {

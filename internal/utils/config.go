@@ -13,12 +13,40 @@ import (
 	"go.uber.org/fx"
 )
 
+// ConfigFxModule is the fx module for the config that provides the Config.
 var ConfigFxModule = fx.Module("config", fx.Provide(NewConfig))
 
+// Config is the global configuration of the application.
 type Config struct {
 	*koanf.Koanf
 }
 
+// NewConfig creates a new Config.
+//
+// It loads the configuration from "/etc/iotmonitor/config.toml", "<userConfigDir>/iotmonitor/config.toml",
+// "config.toml", and the environment variables started with "IOT_MONITOR_".
+// The later one has the highest priority.
+//
+// The environment variables are case-insensitive and converts with the following rules (wip: not sure yet):
+//
+// - "IOT_MONITOR_FOO_BAR" -> "foo.bar"
+// - "IOT_MONITOR_FOO_BAR_BAZ" -> "foo.bar.baz"
+//
+// The TOML configuration file supports the environment variables interpolation.
+// For example:
+//
+// ```
+// foo = "${FOO}"
+// bar = "${BAR}"
+// ```
+//
+// If the environment variables "FOO" and "BAR" are set to, for example, "foo" and "bar" correspondingly,
+// the configuration will be:
+//
+// ```
+// foo = "foo"
+// bar = "bar"
+// ```
 func NewConfig() Config {
 	conf := koanf.New(".")
 
@@ -79,6 +107,7 @@ func NewConfig() Config {
 	return Config{Koanf: conf}
 }
 
+// EnvInterpolation is the parser that interpolates the environment variables.
 type EnvInterpolation struct {
 	parser koanf.Parser
 }
@@ -98,6 +127,7 @@ func (ei *EnvInterpolation) Unmarshal(bytes []byte) (map[string]interface{}, err
 	return unmarshalled, nil
 }
 
+// NewEnvInterpolation creates a new EnvInterpolation.
 func NewEnvInterpolation(parser koanf.Parser) koanf.Parser {
 	return &EnvInterpolation{parser: parser}
 }

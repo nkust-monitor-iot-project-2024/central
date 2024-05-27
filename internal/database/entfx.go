@@ -1,3 +1,5 @@
+// Package database provides some convenience functions for working with the ent ORM,
+// for example, the Fx module that initializes the ent client and manages its lifecycle.
 package database
 
 import (
@@ -13,6 +15,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// EntFx is an Fx module that provides an ent client.
 var EntFx = fx.Module("ent", fx.Provide(func(lifecycle fx.Lifecycle, config utils.Config) (*ent.Client, error) {
 	host := config.String("postgres.host")
 	if host == "" {

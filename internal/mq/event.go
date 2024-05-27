@@ -17,7 +17,9 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+// EventSubscriber is the interface for services to subscribe to event messages.
 type EventSubscriber interface {
+	// SubscribeEvent subscribes to the event messages.
 	SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], error)
 }
 
@@ -164,10 +166,11 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 	return eventsCh, nil
 }
 
+// handleRawEventMessage handles the received amqp091.Delivery, process it, and send it to ch.
 func (mq *amqpMQ) handleRawEventMessage(ctx context.Context, message amqp091.Delivery, ch chan<- TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]) error {
 	mq.logger.DebugContext(ctx, "handle raw message", slog.Any("message", message))
 
-	ctx = mq.propagator.Extract(ctx, NewMessageHeaderCarrier(message))
+	ctx = mq.propagator.Extract(ctx, NewMessageCarrier(message))
 	ctx, span := mq.tracer.Start(ctx, "mq/handle_raw_event_message")
 	defer span.End()
 
@@ -218,6 +221,7 @@ func (mq *amqpMQ) handleRawEventMessage(ctx context.Context, message amqp091.Del
 	}
 }
 
+// extractMetadataFromHeader extracts the models.Metadata from the AMQP header.
 func extractMetadataFromHeader(delivery amqp091.Delivery) (models.Metadata, error) {
 	eventID := delivery.MessageId
 	if eventID == "" {

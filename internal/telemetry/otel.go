@@ -1,3 +1,6 @@
+// Package telemetry set up OpenTelemetry of a service.
+//
+// It should be used as soon as possible, so we can trace the service as much as possible.
 package telemetry
 
 import (
@@ -26,6 +29,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
+// FxModule is the fx module for the telemetry that handles the cleanup.
 var FxModule = fx.Module(
 	"otel",
 	fx.Invoke(func(lifecycle fx.Lifecycle, config utils.Config, resource *resource.Resource) error {
@@ -55,8 +59,10 @@ var FxModule = fx.Module(
 	}),
 )
 
+// OtelShutdownFn is the function returns by SetupOTelSDK that shuts down the OpenTelemetry SDK.
 type OtelShutdownFn func(context.Context) error
 
+// SetupOTelSDK sets up the OpenTelemetry SDK.
 func SetupOTelSDK(ctx context.Context, config utils.Config, resource *resource.Resource) (shutdown OtelShutdownFn, err error) {
 	var shutdownFuncs []func(context.Context) error
 

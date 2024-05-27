@@ -1,3 +1,4 @@
+// Package event is the core logic of the service "event-aggregator".
 package event
 
 import (
@@ -13,6 +14,7 @@ import (
 	"go.uber.org/fx"
 )
 
+// FxModule is the fx module for the Service that handles the cleanup.
 var FxModule = fx.Module(
 	"event-aggregator",
 	fx.Provide(NewStorer),
@@ -45,11 +47,13 @@ var FxModule = fx.Module(
 	}),
 )
 
+// Service is the service that aggregates the events.
 type Service struct {
 	repo         models.EntEventRepository
 	messageQueue mq.MessageQueue
 }
 
+// New creates a new Service.
 func New(repo models.EntEventRepository, mq mq.MessageQueue) *Service {
 	return &Service{
 		repo:         repo,
@@ -57,6 +61,7 @@ func New(repo models.EntEventRepository, mq mq.MessageQueue) *Service {
 	}
 }
 
+// Run creates the sub-service (Storer) and blocks until something wrong or the context is canceled.
 func (s *Service) Run(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
