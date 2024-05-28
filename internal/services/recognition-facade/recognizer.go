@@ -147,7 +147,7 @@ func (r *Recognizer) Run(ctx context.Context, movementEvents <-chan mq.Traceable
 // It returns the non-identified (no UUID) eventpb.Invader, so we can wrap it in eventpb.InvadedInfo.
 func findHumanInEntities(entities []*entityrecognitionpb.Entity) (invaders []*eventpb.Invader, found bool) {
 	for _, entity := range entities {
-		if entity.GetLabel() == "human" {
+		if entity.GetLabel() == "person" {
 			invaders = append(invaders, &eventpb.Invader{
 				Picture:    entity.GetImage(),
 				Confidence: entity.GetConfidence(),

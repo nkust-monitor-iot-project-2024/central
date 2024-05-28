@@ -24,7 +24,6 @@ var FxModule = fx.Module(
 	"recognition-facade",
 	mq.FxModule,
 	discover.EntityRecognitionServiceFxModule,
-	fx.Provide(NewRecognizer),
 	fx.Provide(New),
 	fx.Invoke(func(lifecycle fx.Lifecycle, shutdowner fx.Shutdowner, s *Service) error {
 		ctx, cancel := context.WithCancel(context.Background())
