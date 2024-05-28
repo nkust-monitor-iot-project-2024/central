@@ -24,6 +24,7 @@ func NewResource(serviceName string, serviceVersion string) (*resource.Resource,
 			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion(serviceVersion),
 			semconv.ServiceNamespace("iot-monitor"),
+			semconv.DeploymentEnvironment("development"), // fixme: switch to production after online
 			semconv.ServiceInstanceID(uuid.New().String()),
 		),
 	)
