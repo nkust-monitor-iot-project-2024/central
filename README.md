@@ -3,7 +3,7 @@
 This is a monorepo with the following services:
 
 * [event-aggregator](./cmd/event-aggregator)
-* recognition-facade
+* [recognition-facade](./cmd/recognition-facade)
 
 and the gRPC/Protobuf definition, OpenTelemetry, MQ, database modules.
 
