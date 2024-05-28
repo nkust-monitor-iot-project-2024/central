@@ -147,7 +147,6 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 				break
 			}
 
-			slog.DebugContext(ctx, "SubscribeEvent: waiting for raw message")
 			rawMessage := <-rawMessageCh
 
 			wg.Add(1)
@@ -188,8 +187,6 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 
 // unmarshalRawEventMessage handles the received amqp091.Delivery, process it, and send it to ch.
 func (mq *amqpMQ) unmarshalRawEventMessage(ctx context.Context, message amqp091.Delivery) (*TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], error) {
-	mq.logger.DebugContext(ctx, "handle raw message", slog.Any("message", message))
-
 	ctx = mq.propagator.Extract(ctx, amqpext.NewHeaderSupplier(message.Headers))
 	ctx, span := mq.tracer.Start(ctx, "mq/unmarshal_raw_event_message")
 	defer span.End()

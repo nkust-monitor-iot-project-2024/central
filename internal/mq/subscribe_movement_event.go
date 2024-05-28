@@ -137,7 +137,6 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 				break
 			}
 
-			slog.DebugContext(ctx, "SubscribeMovementEvent: waiting for raw message")
 			rawMessage := <-rawMessageCh
 
 			wg.Add(1)
