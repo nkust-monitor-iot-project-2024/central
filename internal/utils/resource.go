@@ -23,7 +23,7 @@ func NewResource(serviceName string, serviceVersion string) (*resource.Resource,
 		resource.NewWithAttributes(semconv.SchemaURL,
 			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion(serviceVersion),
-			semconv.ServiceNamespace("iot-monitor/central"),
+			semconv.ServiceNamespace("iot-monitor"),
 			semconv.ServiceInstanceID(uuid.New().String()),
 		),
 	)
