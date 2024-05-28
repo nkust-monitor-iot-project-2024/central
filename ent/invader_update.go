@@ -35,6 +35,20 @@ func (iu *InvaderUpdate) SetPicture(b []byte) *InvaderUpdate {
 	return iu
 }
 
+// SetPictureMime sets the "picture_mime" field.
+func (iu *InvaderUpdate) SetPictureMime(s string) *InvaderUpdate {
+	iu.mutation.SetPictureMime(s)
+	return iu
+}
+
+// SetNillablePictureMime sets the "picture_mime" field if the given value is not nil.
+func (iu *InvaderUpdate) SetNillablePictureMime(s *string) *InvaderUpdate {
+	if s != nil {
+		iu.SetPictureMime(*s)
+	}
+	return iu
+}
+
 // SetConfidence sets the "confidence" field.
 func (iu *InvaderUpdate) SetConfidence(f float64) *InvaderUpdate {
 	iu.mutation.ResetConfidence()
@@ -136,6 +150,9 @@ func (iu *InvaderUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := iu.mutation.Picture(); ok {
 		_spec.SetField(invader.FieldPicture, field.TypeBytes, value)
 	}
+	if value, ok := iu.mutation.PictureMime(); ok {
+		_spec.SetField(invader.FieldPictureMime, field.TypeString, value)
+	}
 	if value, ok := iu.mutation.Confidence(); ok {
 		_spec.SetField(invader.FieldConfidence, field.TypeFloat64, value)
 	}
@@ -210,6 +227,20 @@ type InvaderUpdateOne struct {
 // SetPicture sets the "picture" field.
 func (iuo *InvaderUpdateOne) SetPicture(b []byte) *InvaderUpdateOne {
 	iuo.mutation.SetPicture(b)
+	return iuo
+}
+
+// SetPictureMime sets the "picture_mime" field.
+func (iuo *InvaderUpdateOne) SetPictureMime(s string) *InvaderUpdateOne {
+	iuo.mutation.SetPictureMime(s)
+	return iuo
+}
+
+// SetNillablePictureMime sets the "picture_mime" field if the given value is not nil.
+func (iuo *InvaderUpdateOne) SetNillablePictureMime(s *string) *InvaderUpdateOne {
+	if s != nil {
+		iuo.SetPictureMime(*s)
+	}
 	return iuo
 }
 
@@ -343,6 +374,9 @@ func (iuo *InvaderUpdateOne) sqlSave(ctx context.Context) (_node *Invader, err e
 	}
 	if value, ok := iuo.mutation.Picture(); ok {
 		_spec.SetField(invader.FieldPicture, field.TypeBytes, value)
+	}
+	if value, ok := iuo.mutation.PictureMime(); ok {
+		_spec.SetField(invader.FieldPictureMime, field.TypeString, value)
 	}
 	if value, ok := iuo.mutation.Confidence(); ok {
 		_spec.SetField(invader.FieldConfidence, field.TypeFloat64, value)

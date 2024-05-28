@@ -59,6 +59,11 @@ func Picture(v []byte) predicate.Movement {
 	return predicate.Movement(sql.FieldEQ(FieldPicture, v))
 }
 
+// PictureMime applies equality check predicate on the "picture_mime" field. It's identical to PictureMimeEQ.
+func PictureMime(v string) predicate.Movement {
+	return predicate.Movement(sql.FieldEQ(FieldPictureMime, v))
+}
+
 // PictureEQ applies the EQ predicate on the "picture" field.
 func PictureEQ(v []byte) predicate.Movement {
 	return predicate.Movement(sql.FieldEQ(FieldPicture, v))
@@ -97,6 +102,71 @@ func PictureLT(v []byte) predicate.Movement {
 // PictureLTE applies the LTE predicate on the "picture" field.
 func PictureLTE(v []byte) predicate.Movement {
 	return predicate.Movement(sql.FieldLTE(FieldPicture, v))
+}
+
+// PictureMimeEQ applies the EQ predicate on the "picture_mime" field.
+func PictureMimeEQ(v string) predicate.Movement {
+	return predicate.Movement(sql.FieldEQ(FieldPictureMime, v))
+}
+
+// PictureMimeNEQ applies the NEQ predicate on the "picture_mime" field.
+func PictureMimeNEQ(v string) predicate.Movement {
+	return predicate.Movement(sql.FieldNEQ(FieldPictureMime, v))
+}
+
+// PictureMimeIn applies the In predicate on the "picture_mime" field.
+func PictureMimeIn(vs ...string) predicate.Movement {
+	return predicate.Movement(sql.FieldIn(FieldPictureMime, vs...))
+}
+
+// PictureMimeNotIn applies the NotIn predicate on the "picture_mime" field.
+func PictureMimeNotIn(vs ...string) predicate.Movement {
+	return predicate.Movement(sql.FieldNotIn(FieldPictureMime, vs...))
+}
+
+// PictureMimeGT applies the GT predicate on the "picture_mime" field.
+func PictureMimeGT(v string) predicate.Movement {
+	return predicate.Movement(sql.FieldGT(FieldPictureMime, v))
+}
+
+// PictureMimeGTE applies the GTE predicate on the "picture_mime" field.
+func PictureMimeGTE(v string) predicate.Movement {
+	return predicate.Movement(sql.FieldGTE(FieldPictureMime, v))
+}
+
+// PictureMimeLT applies the LT predicate on the "picture_mime" field.
+func PictureMimeLT(v string) predicate.Movement {
+	return predicate.Movement(sql.FieldLT(FieldPictureMime, v))
+}
+
+// PictureMimeLTE applies the LTE predicate on the "picture_mime" field.
+func PictureMimeLTE(v string) predicate.Movement {
+	return predicate.Movement(sql.FieldLTE(FieldPictureMime, v))
+}
+
+// PictureMimeContains applies the Contains predicate on the "picture_mime" field.
+func PictureMimeContains(v string) predicate.Movement {
+	return predicate.Movement(sql.FieldContains(FieldPictureMime, v))
+}
+
+// PictureMimeHasPrefix applies the HasPrefix predicate on the "picture_mime" field.
+func PictureMimeHasPrefix(v string) predicate.Movement {
+	return predicate.Movement(sql.FieldHasPrefix(FieldPictureMime, v))
+}
+
+// PictureMimeHasSuffix applies the HasSuffix predicate on the "picture_mime" field.
+func PictureMimeHasSuffix(v string) predicate.Movement {
+	return predicate.Movement(sql.FieldHasSuffix(FieldPictureMime, v))
+}
+
+// PictureMimeEqualFold applies the EqualFold predicate on the "picture_mime" field.
+func PictureMimeEqualFold(v string) predicate.Movement {
+	return predicate.Movement(sql.FieldEqualFold(FieldPictureMime, v))
+}
+
+// PictureMimeContainsFold applies the ContainsFold predicate on the "picture_mime" field.
+func PictureMimeContainsFold(v string) predicate.Movement {
+	return predicate.Movement(sql.FieldContainsFold(FieldPictureMime, v))
 }
 
 // HasEvent applies the HasEdge predicate on the "event" edge.

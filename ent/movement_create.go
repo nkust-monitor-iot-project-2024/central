@@ -27,6 +27,12 @@ func (mc *MovementCreate) SetPicture(b []byte) *MovementCreate {
 	return mc
 }
 
+// SetPictureMime sets the "picture_mime" field.
+func (mc *MovementCreate) SetPictureMime(s string) *MovementCreate {
+	mc.mutation.SetPictureMime(s)
+	return mc
+}
+
 // SetID sets the "id" field.
 func (mc *MovementCreate) SetID(u uuid.UUID) *MovementCreate {
 	mc.mutation.SetID(u)
@@ -85,6 +91,9 @@ func (mc *MovementCreate) check() error {
 	if _, ok := mc.mutation.Picture(); !ok {
 		return &ValidationError{Name: "picture", err: errors.New(`ent: missing required field "Movement.picture"`)}
 	}
+	if _, ok := mc.mutation.PictureMime(); !ok {
+		return &ValidationError{Name: "picture_mime", err: errors.New(`ent: missing required field "Movement.picture_mime"`)}
+	}
 	if len(mc.mutation.EventIDs()) == 0 {
 		return &ValidationError{Name: "event", err: errors.New(`ent: missing required edge "Movement.event"`)}
 	}
@@ -126,6 +135,10 @@ func (mc *MovementCreate) createSpec() (*Movement, *sqlgraph.CreateSpec) {
 	if value, ok := mc.mutation.Picture(); ok {
 		_spec.SetField(movement.FieldPicture, field.TypeBytes, value)
 		_node.Picture = value
+	}
+	if value, ok := mc.mutation.PictureMime(); ok {
+		_spec.SetField(movement.FieldPictureMime, field.TypeString, value)
+		_node.PictureMime = value
 	}
 	if nodes := mc.mutation.EventIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

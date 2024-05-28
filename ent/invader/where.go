@@ -59,6 +59,11 @@ func Picture(v []byte) predicate.Invader {
 	return predicate.Invader(sql.FieldEQ(FieldPicture, v))
 }
 
+// PictureMime applies equality check predicate on the "picture_mime" field. It's identical to PictureMimeEQ.
+func PictureMime(v string) predicate.Invader {
+	return predicate.Invader(sql.FieldEQ(FieldPictureMime, v))
+}
+
 // Confidence applies equality check predicate on the "confidence" field. It's identical to ConfidenceEQ.
 func Confidence(v float64) predicate.Invader {
 	return predicate.Invader(sql.FieldEQ(FieldConfidence, v))
@@ -102,6 +107,71 @@ func PictureLT(v []byte) predicate.Invader {
 // PictureLTE applies the LTE predicate on the "picture" field.
 func PictureLTE(v []byte) predicate.Invader {
 	return predicate.Invader(sql.FieldLTE(FieldPicture, v))
+}
+
+// PictureMimeEQ applies the EQ predicate on the "picture_mime" field.
+func PictureMimeEQ(v string) predicate.Invader {
+	return predicate.Invader(sql.FieldEQ(FieldPictureMime, v))
+}
+
+// PictureMimeNEQ applies the NEQ predicate on the "picture_mime" field.
+func PictureMimeNEQ(v string) predicate.Invader {
+	return predicate.Invader(sql.FieldNEQ(FieldPictureMime, v))
+}
+
+// PictureMimeIn applies the In predicate on the "picture_mime" field.
+func PictureMimeIn(vs ...string) predicate.Invader {
+	return predicate.Invader(sql.FieldIn(FieldPictureMime, vs...))
+}
+
+// PictureMimeNotIn applies the NotIn predicate on the "picture_mime" field.
+func PictureMimeNotIn(vs ...string) predicate.Invader {
+	return predicate.Invader(sql.FieldNotIn(FieldPictureMime, vs...))
+}
+
+// PictureMimeGT applies the GT predicate on the "picture_mime" field.
+func PictureMimeGT(v string) predicate.Invader {
+	return predicate.Invader(sql.FieldGT(FieldPictureMime, v))
+}
+
+// PictureMimeGTE applies the GTE predicate on the "picture_mime" field.
+func PictureMimeGTE(v string) predicate.Invader {
+	return predicate.Invader(sql.FieldGTE(FieldPictureMime, v))
+}
+
+// PictureMimeLT applies the LT predicate on the "picture_mime" field.
+func PictureMimeLT(v string) predicate.Invader {
+	return predicate.Invader(sql.FieldLT(FieldPictureMime, v))
+}
+
+// PictureMimeLTE applies the LTE predicate on the "picture_mime" field.
+func PictureMimeLTE(v string) predicate.Invader {
+	return predicate.Invader(sql.FieldLTE(FieldPictureMime, v))
+}
+
+// PictureMimeContains applies the Contains predicate on the "picture_mime" field.
+func PictureMimeContains(v string) predicate.Invader {
+	return predicate.Invader(sql.FieldContains(FieldPictureMime, v))
+}
+
+// PictureMimeHasPrefix applies the HasPrefix predicate on the "picture_mime" field.
+func PictureMimeHasPrefix(v string) predicate.Invader {
+	return predicate.Invader(sql.FieldHasPrefix(FieldPictureMime, v))
+}
+
+// PictureMimeHasSuffix applies the HasSuffix predicate on the "picture_mime" field.
+func PictureMimeHasSuffix(v string) predicate.Invader {
+	return predicate.Invader(sql.FieldHasSuffix(FieldPictureMime, v))
+}
+
+// PictureMimeEqualFold applies the EqualFold predicate on the "picture_mime" field.
+func PictureMimeEqualFold(v string) predicate.Invader {
+	return predicate.Invader(sql.FieldEqualFold(FieldPictureMime, v))
+}
+
+// PictureMimeContainsFold applies the ContainsFold predicate on the "picture_mime" field.
+func PictureMimeContainsFold(v string) predicate.Invader {
+	return predicate.Invader(sql.FieldContainsFold(FieldPictureMime, v))
 }
 
 // ConfidenceEQ applies the EQ predicate on the "confidence" field.

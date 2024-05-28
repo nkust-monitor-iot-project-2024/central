@@ -27,6 +27,12 @@ func (ic *InvaderCreate) SetPicture(b []byte) *InvaderCreate {
 	return ic
 }
 
+// SetPictureMime sets the "picture_mime" field.
+func (ic *InvaderCreate) SetPictureMime(s string) *InvaderCreate {
+	ic.mutation.SetPictureMime(s)
+	return ic
+}
+
 // SetConfidence sets the "confidence" field.
 func (ic *InvaderCreate) SetConfidence(f float64) *InvaderCreate {
 	ic.mutation.SetConfidence(f)
@@ -91,6 +97,9 @@ func (ic *InvaderCreate) check() error {
 	if _, ok := ic.mutation.Picture(); !ok {
 		return &ValidationError{Name: "picture", err: errors.New(`ent: missing required field "Invader.picture"`)}
 	}
+	if _, ok := ic.mutation.PictureMime(); !ok {
+		return &ValidationError{Name: "picture_mime", err: errors.New(`ent: missing required field "Invader.picture_mime"`)}
+	}
 	if _, ok := ic.mutation.Confidence(); !ok {
 		return &ValidationError{Name: "confidence", err: errors.New(`ent: missing required field "Invader.confidence"`)}
 	}
@@ -135,6 +144,10 @@ func (ic *InvaderCreate) createSpec() (*Invader, *sqlgraph.CreateSpec) {
 	if value, ok := ic.mutation.Picture(); ok {
 		_spec.SetField(invader.FieldPicture, field.TypeBytes, value)
 		_node.Picture = value
+	}
+	if value, ok := ic.mutation.PictureMime(); ok {
+		_spec.SetField(invader.FieldPictureMime, field.TypeString, value)
+		_node.PictureMime = value
 	}
 	if value, ok := ic.mutation.Confidence(); ok {
 		_spec.SetField(invader.FieldConfidence, field.TypeFloat64, value)

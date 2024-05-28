@@ -35,6 +35,20 @@ func (mu *MovementUpdate) SetPicture(b []byte) *MovementUpdate {
 	return mu
 }
 
+// SetPictureMime sets the "picture_mime" field.
+func (mu *MovementUpdate) SetPictureMime(s string) *MovementUpdate {
+	mu.mutation.SetPictureMime(s)
+	return mu
+}
+
+// SetNillablePictureMime sets the "picture_mime" field if the given value is not nil.
+func (mu *MovementUpdate) SetNillablePictureMime(s *string) *MovementUpdate {
+	if s != nil {
+		mu.SetPictureMime(*s)
+	}
+	return mu
+}
+
 // AddEventIDs adds the "event" edge to the Event entity by IDs.
 func (mu *MovementUpdate) AddEventIDs(ids ...uuid.UUID) *MovementUpdate {
 	mu.mutation.AddEventIDs(ids...)
@@ -115,6 +129,9 @@ func (mu *MovementUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := mu.mutation.Picture(); ok {
 		_spec.SetField(movement.FieldPicture, field.TypeBytes, value)
 	}
+	if value, ok := mu.mutation.PictureMime(); ok {
+		_spec.SetField(movement.FieldPictureMime, field.TypeString, value)
+	}
 	if mu.mutation.EventCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
@@ -183,6 +200,20 @@ type MovementUpdateOne struct {
 // SetPicture sets the "picture" field.
 func (muo *MovementUpdateOne) SetPicture(b []byte) *MovementUpdateOne {
 	muo.mutation.SetPicture(b)
+	return muo
+}
+
+// SetPictureMime sets the "picture_mime" field.
+func (muo *MovementUpdateOne) SetPictureMime(s string) *MovementUpdateOne {
+	muo.mutation.SetPictureMime(s)
+	return muo
+}
+
+// SetNillablePictureMime sets the "picture_mime" field if the given value is not nil.
+func (muo *MovementUpdateOne) SetNillablePictureMime(s *string) *MovementUpdateOne {
+	if s != nil {
+		muo.SetPictureMime(*s)
+	}
 	return muo
 }
 
@@ -295,6 +326,9 @@ func (muo *MovementUpdateOne) sqlSave(ctx context.Context) (_node *Movement, err
 	}
 	if value, ok := muo.mutation.Picture(); ok {
 		_spec.SetField(movement.FieldPicture, field.TypeBytes, value)
+	}
+	if value, ok := muo.mutation.PictureMime(); ok {
+		_spec.SetField(movement.FieldPictureMime, field.TypeString, value)
 	}
 	if muo.mutation.EventCleared() {
 		edge := &sqlgraph.EdgeSpec{

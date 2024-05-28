@@ -19,6 +19,8 @@ type Movement struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// Picture holds the value of the "picture" field.
 	Picture []byte `json:"picture,omitempty"`
+	// PictureMime holds the value of the "picture_mime" field.
+	PictureMime string `json:"picture_mime,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the MovementQuery when eager-loading is set.
 	Edges        MovementEdges `json:"edges"`
@@ -50,6 +52,8 @@ func (*Movement) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case movement.FieldPicture:
 			values[i] = new([]byte)
+		case movement.FieldPictureMime:
+			values[i] = new(sql.NullString)
 		case movement.FieldID:
 			values[i] = new(uuid.UUID)
 		default:
@@ -78,6 +82,12 @@ func (m *Movement) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field picture", values[i])
 			} else if value != nil {
 				m.Picture = *value
+			}
+		case movement.FieldPictureMime:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field picture_mime", values[i])
+			} else if value.Valid {
+				m.PictureMime = value.String
 			}
 		default:
 			m.selectValues.Set(columns[i], values[i])
@@ -122,6 +132,9 @@ func (m *Movement) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", m.ID))
 	builder.WriteString("picture=")
 	builder.WriteString(fmt.Sprintf("%v", m.Picture))
+	builder.WriteString(", ")
+	builder.WriteString("picture_mime=")
+	builder.WriteString(m.PictureMime)
 	builder.WriteByte(')')
 	return builder.String()
 }

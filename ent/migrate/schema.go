@@ -26,6 +26,7 @@ var (
 	InvadersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "picture", Type: field.TypeBytes},
+		{Name: "picture_mime", Type: field.TypeString},
 		{Name: "confidence", Type: field.TypeFloat64},
 	}
 	// InvadersTable holds the schema information for the "invaders" table.
@@ -49,6 +50,7 @@ var (
 	MovementsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "picture", Type: field.TypeBytes},
+		{Name: "picture_mime", Type: field.TypeString},
 	}
 	// MovementsTable holds the schema information for the "movements" table.
 	MovementsTable = &schema.Table{

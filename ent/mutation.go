@@ -816,6 +816,7 @@ type InvaderMutation struct {
 	typ           string
 	id            *uuid.UUID
 	picture       *[]byte
+	picture_mime  *string
 	confidence    *float64
 	addconfidence *float64
 	clearedFields map[string]struct{}
@@ -967,6 +968,42 @@ func (m *InvaderMutation) ResetPicture() {
 	m.picture = nil
 }
 
+// SetPictureMime sets the "picture_mime" field.
+func (m *InvaderMutation) SetPictureMime(s string) {
+	m.picture_mime = &s
+}
+
+// PictureMime returns the value of the "picture_mime" field in the mutation.
+func (m *InvaderMutation) PictureMime() (r string, exists bool) {
+	v := m.picture_mime
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPictureMime returns the old "picture_mime" field's value of the Invader entity.
+// If the Invader object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvaderMutation) OldPictureMime(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPictureMime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPictureMime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPictureMime: %w", err)
+	}
+	return oldValue.PictureMime, nil
+}
+
+// ResetPictureMime resets all changes to the "picture_mime" field.
+func (m *InvaderMutation) ResetPictureMime() {
+	m.picture_mime = nil
+}
+
 // SetConfidence sets the "confidence" field.
 func (m *InvaderMutation) SetConfidence(f float64) {
 	m.confidence = &f
@@ -1111,9 +1148,12 @@ func (m *InvaderMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InvaderMutation) Fields() []string {
-	fields := make([]string, 0, 2)
+	fields := make([]string, 0, 3)
 	if m.picture != nil {
 		fields = append(fields, invader.FieldPicture)
+	}
+	if m.picture_mime != nil {
+		fields = append(fields, invader.FieldPictureMime)
 	}
 	if m.confidence != nil {
 		fields = append(fields, invader.FieldConfidence)
@@ -1128,6 +1168,8 @@ func (m *InvaderMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case invader.FieldPicture:
 		return m.Picture()
+	case invader.FieldPictureMime:
+		return m.PictureMime()
 	case invader.FieldConfidence:
 		return m.Confidence()
 	}
@@ -1141,6 +1183,8 @@ func (m *InvaderMutation) OldField(ctx context.Context, name string) (ent.Value,
 	switch name {
 	case invader.FieldPicture:
 		return m.OldPicture(ctx)
+	case invader.FieldPictureMime:
+		return m.OldPictureMime(ctx)
 	case invader.FieldConfidence:
 		return m.OldConfidence(ctx)
 	}
@@ -1158,6 +1202,13 @@ func (m *InvaderMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPicture(v)
+		return nil
+	case invader.FieldPictureMime:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPictureMime(v)
 		return nil
 	case invader.FieldConfidence:
 		v, ok := value.(float64)
@@ -1232,6 +1283,9 @@ func (m *InvaderMutation) ResetField(name string) error {
 	switch name {
 	case invader.FieldPicture:
 		m.ResetPicture()
+		return nil
+	case invader.FieldPictureMime:
+		m.ResetPictureMime()
 		return nil
 	case invader.FieldConfidence:
 		m.ResetConfidence()
@@ -1792,6 +1846,7 @@ type MovementMutation struct {
 	typ           string
 	id            *uuid.UUID
 	picture       *[]byte
+	picture_mime  *string
 	clearedFields map[string]struct{}
 	event         map[uuid.UUID]struct{}
 	removedevent  map[uuid.UUID]struct{}
@@ -1941,6 +1996,42 @@ func (m *MovementMutation) ResetPicture() {
 	m.picture = nil
 }
 
+// SetPictureMime sets the "picture_mime" field.
+func (m *MovementMutation) SetPictureMime(s string) {
+	m.picture_mime = &s
+}
+
+// PictureMime returns the value of the "picture_mime" field in the mutation.
+func (m *MovementMutation) PictureMime() (r string, exists bool) {
+	v := m.picture_mime
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPictureMime returns the old "picture_mime" field's value of the Movement entity.
+// If the Movement object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MovementMutation) OldPictureMime(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPictureMime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPictureMime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPictureMime: %w", err)
+	}
+	return oldValue.PictureMime, nil
+}
+
+// ResetPictureMime resets all changes to the "picture_mime" field.
+func (m *MovementMutation) ResetPictureMime() {
+	m.picture_mime = nil
+}
+
 // AddEventIDs adds the "event" edge to the Event entity by ids.
 func (m *MovementMutation) AddEventIDs(ids ...uuid.UUID) {
 	if m.event == nil {
@@ -2029,9 +2120,12 @@ func (m *MovementMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MovementMutation) Fields() []string {
-	fields := make([]string, 0, 1)
+	fields := make([]string, 0, 2)
 	if m.picture != nil {
 		fields = append(fields, movement.FieldPicture)
+	}
+	if m.picture_mime != nil {
+		fields = append(fields, movement.FieldPictureMime)
 	}
 	return fields
 }
@@ -2043,6 +2137,8 @@ func (m *MovementMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case movement.FieldPicture:
 		return m.Picture()
+	case movement.FieldPictureMime:
+		return m.PictureMime()
 	}
 	return nil, false
 }
@@ -2054,6 +2150,8 @@ func (m *MovementMutation) OldField(ctx context.Context, name string) (ent.Value
 	switch name {
 	case movement.FieldPicture:
 		return m.OldPicture(ctx)
+	case movement.FieldPictureMime:
+		return m.OldPictureMime(ctx)
 	}
 	return nil, fmt.Errorf("unknown Movement field %s", name)
 }
@@ -2069,6 +2167,13 @@ func (m *MovementMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPicture(v)
+		return nil
+	case movement.FieldPictureMime:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPictureMime(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Movement field %s", name)
@@ -2121,6 +2226,9 @@ func (m *MovementMutation) ResetField(name string) error {
 	switch name {
 	case movement.FieldPicture:
 		m.ResetPicture()
+		return nil
+	case movement.FieldPictureMime:
+		m.ResetPictureMime()
 		return nil
 	}
 	return fmt.Errorf("unknown Movement field %s", name)

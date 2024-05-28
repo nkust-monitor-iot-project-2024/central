@@ -17,6 +17,7 @@ func (Movement) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.New()),
 		field.Bytes("picture"),
+		field.String("picture_mime"),
 	}
 }
 

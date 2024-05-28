@@ -19,6 +19,8 @@ type Invader struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// Picture holds the value of the "picture" field.
 	Picture []byte `json:"picture,omitempty"`
+	// PictureMime holds the value of the "picture_mime" field.
+	PictureMime string `json:"picture_mime,omitempty"`
 	// Confidence holds the value of the "confidence" field.
 	Confidence float64 `json:"confidence,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -54,6 +56,8 @@ func (*Invader) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case invader.FieldConfidence:
 			values[i] = new(sql.NullFloat64)
+		case invader.FieldPictureMime:
+			values[i] = new(sql.NullString)
 		case invader.FieldID:
 			values[i] = new(uuid.UUID)
 		default:
@@ -82,6 +86,12 @@ func (i *Invader) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field picture", values[j])
 			} else if value != nil {
 				i.Picture = *value
+			}
+		case invader.FieldPictureMime:
+			if value, ok := values[j].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field picture_mime", values[j])
+			} else if value.Valid {
+				i.PictureMime = value.String
 			}
 		case invader.FieldConfidence:
 			if value, ok := values[j].(*sql.NullFloat64); !ok {
@@ -132,6 +142,9 @@ func (i *Invader) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", i.ID))
 	builder.WriteString("picture=")
 	builder.WriteString(fmt.Sprintf("%v", i.Picture))
+	builder.WriteString(", ")
+	builder.WriteString("picture_mime=")
+	builder.WriteString(i.PictureMime)
 	builder.WriteString(", ")
 	builder.WriteString("confidence=")
 	builder.WriteString(fmt.Sprintf("%v", i.Confidence))

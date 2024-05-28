@@ -14,6 +14,8 @@ const (
 	FieldID = "id"
 	// FieldPicture holds the string denoting the picture field in the database.
 	FieldPicture = "picture"
+	// FieldPictureMime holds the string denoting the picture_mime field in the database.
+	FieldPictureMime = "picture_mime"
 	// FieldConfidence holds the string denoting the confidence field in the database.
 	FieldConfidence = "confidence"
 	// EdgeEvent holds the string denoting the event edge name in mutations.
@@ -31,6 +33,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldPicture,
+	FieldPictureMime,
 	FieldConfidence,
 }
 
@@ -56,6 +59,11 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByPictureMime orders the results by the picture_mime field.
+func ByPictureMime(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPictureMime, opts...).ToFunc()
 }
 
 // ByConfidence orders the results by the confidence field.
