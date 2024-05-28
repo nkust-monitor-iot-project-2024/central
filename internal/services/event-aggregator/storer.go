@@ -236,6 +236,23 @@ func (s *Storer) Run(ctx context.Context, events <-chan mq.TraceableTypedDeliver
 				trace.WithSpanKind(trace.SpanKindConsumer))
 			defer span.End()
 
+			if v, ok := event.Headers["x-delivery-count"]; ok {
+				deliveryCount, ok := v.(int64)
+				if !ok {
+					span.SetStatus(codes.Error, fmt.Sprintf("invalid x-delivery-count (%T, %v)", v, v))
+					_ = event.Reject(false)
+
+					return
+				}
+
+				if deliveryCount >= 5 {
+					span.SetStatus(codes.Error, fmt.Sprintf("message failed more than 5 times (%d)", deliveryCount))
+					_ = event.Reject(false)
+
+					return
+				}
+			}
+
 			if ok := s.storeSingleEvent(ctx, event.Body, event.Metadata); !ok {
 				span.SetStatus(codes.Error, "failed to store event")
 				_ = event.Reject(true)

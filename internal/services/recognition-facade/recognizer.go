@@ -111,6 +111,23 @@ func (r *Recognizer) Run(ctx context.Context, movementEvents <-chan mq.Traceable
 				trace.WithSpanKind(trace.SpanKindConsumer))
 			defer span.End()
 
+			if v, ok := movementEvent.Headers["x-delivery-count"]; ok {
+				deliveryCount, ok := v.(int64)
+				if !ok {
+					span.SetStatus(codes.Error, fmt.Sprintf("invalid x-delivery-count (%T, %v)", v, v))
+					_ = movementEvent.Reject(false)
+
+					return
+				}
+
+				if deliveryCount >= 5 {
+					span.SetStatus(codes.Error, fmt.Sprintf("message failed more than 5 times (%d)", deliveryCount))
+					_ = movementEvent.Reject(false)
+
+					return
+				}
+			}
+
 			span.AddEvent("extracing movement information")
 			movementEventID := movementEvent.Metadata.GetEventID()
 
