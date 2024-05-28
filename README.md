@@ -31,6 +31,7 @@ sslmode = "disable"  # https://www.postgresql.org/docs/current/libpq-ssl.html
 # TELEMETRY
 [telemetry.endpoint.otlp]
 endpoint = "localhost:4318"
+insecure = true
 
 # SERVICES – Entity Recognition
 [service.entityrecognition]

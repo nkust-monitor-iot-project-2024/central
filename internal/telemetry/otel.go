@@ -129,8 +129,14 @@ func newTraceProvider(ctx context.Context, config utils.Config, serviceResource 
 		endpointConfig := config.Cut("telemetry.endpoint")
 
 		if otlpEndpoint := endpointConfig.String("otlp.endpoint"); otlpEndpoint != "" {
-			exporter, err := otlptracehttp.New(ctx,
-				otlptracehttp.WithEndpoint(otlpEndpoint))
+			options := []otlptracehttp.Option{
+				otlptracehttp.WithEndpoint(otlpEndpoint),
+			}
+			if insecure := endpointConfig.Bool("otlp.insecure"); insecure {
+				options = append(options, otlptracehttp.WithInsecure())
+			}
+
+			exporter, err := otlptracehttp.New(ctx, options...)
 			if err != nil {
 				return nil, fmt.Errorf("set OTLP exporter: %w", err)
 			}
@@ -161,8 +167,14 @@ func newMeterProvider(ctx context.Context, config utils.Config, serviceResource 
 		endpointConfig := config.Cut("telemetry.endpoint")
 
 		if otlpEndpoint := endpointConfig.String("otlp.endpoint"); otlpEndpoint != "" {
-			exporter, err := otlpmetrichttp.New(ctx,
-				otlpmetrichttp.WithEndpoint(otlpEndpoint))
+			options := []otlpmetrichttp.Option{
+				otlpmetrichttp.WithEndpoint(otlpEndpoint),
+			}
+			if insecure := endpointConfig.Bool("otlp.insecure"); insecure {
+				options = append(options, otlpmetrichttp.WithInsecure())
+			}
+
+			exporter, err := otlpmetrichttp.New(ctx, options...)
 			if err != nil {
 				return nil, fmt.Errorf("set OTLP exporter: %w", err)
 			}
@@ -193,8 +205,14 @@ func newLoggerProvider(ctx context.Context, config utils.Config, serviceResource
 		endpointConfig := config.Cut("telemetry.endpoint")
 
 		if otlpEndpoint := endpointConfig.String("otlp.endpoint"); otlpEndpoint != "" {
-			exporter, err := otlploghttp.New(ctx,
-				otlploghttp.WithEndpoint(otlpEndpoint))
+			options := []otlploghttp.Option{
+				otlploghttp.WithEndpoint(otlpEndpoint),
+			}
+			if insecure := endpointConfig.Bool("otlp.insecure"); insecure {
+				options = append(options, otlploghttp.WithInsecure())
+			}
+
+			exporter, err := otlploghttp.New(ctx, options...)
 			if err != nil {
 				return nil, fmt.Errorf("set OTLP exporter: %w", err)
 			}
