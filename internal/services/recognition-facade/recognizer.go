@@ -17,6 +17,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	rpccodes "google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Recognizer is the service that receives the image and recognizes the entities in the image.
@@ -116,7 +118,17 @@ func (r *Recognizer) Run(ctx context.Context, movementEvents <-chan mq.Traceable
 			movementInfo := movementEvent.Body.GetMovementInfo()
 			entity, err := r.recognizeEntities(ctx, movementInfo.GetPicture(), movementInfo.GetPictureMime())
 			if err != nil {
-				span.SetStatus(codes.Error, "failed to recognize entities")
+				if code := status.Code(err); code == rpccodes.InvalidArgument {
+					span.SetStatus(codes.Error, "users provides a unprocessable image")
+					span.RecordError(err)
+
+					_ = movementEvent.Reject(false)
+					return
+				}
+
+				span.SetStatus(codes.Error, "failed to recognize entities in the image")
+				span.RecordError(err)
+
 				_ = movementEvent.Reject(true)
 				return
 			}
