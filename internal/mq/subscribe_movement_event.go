@@ -8,6 +8,7 @@ import (
 
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
+	"github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -67,7 +68,9 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 		false,
 		false,
 		false,
-		nil,
+		amqp091.Table{
+			"x-queue-type": "quorum",
+		},
 	)
 	if err != nil {
 		span.SetStatus(codes.Error, "declare queue failed")

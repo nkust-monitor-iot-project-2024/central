@@ -77,7 +77,9 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 		false,
 		false,
 		false,
-		nil,
+		amqp091.Table{
+			"x-queue-type": "quorum",
+		},
 	)
 	if err != nil {
 		span.SetStatus(codes.Error, "declare queue failed")
