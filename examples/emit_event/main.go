@@ -34,7 +34,8 @@ func main() {
 		marshalledBody, err := protojson.Marshal(&eventpb.EventMessage{
 			Event: &eventpb.EventMessage_MovementInfo{
 				MovementInfo: &eventpb.MovementInfo{
-					Picture: picture,
+					Picture:     picture,
+					PictureMime: "image/jpeg",
 				},
 			},
 		})

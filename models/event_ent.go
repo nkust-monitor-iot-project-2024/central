@@ -119,8 +119,9 @@ func (r *eventRepositoryEnt) transformEvent(ctx context.Context, eventDao *ent.E
 		return &MovementEvent{
 			Metadata: metadata,
 			Movement: Movement{
-				MovementID: movementDao.ID,
-				Picture:    movementDao.Picture,
+				MovementID:  movementDao.ID,
+				Picture:     movementDao.Picture,
+				PictureMime: movementDao.PictureMime,
 			},
 		}, nil
 	case event.TypeInvaded:
@@ -139,9 +140,10 @@ func (r *eventRepositoryEnt) transformEvent(ctx context.Context, eventDao *ent.E
 		invaders := make([]Invader, 0, len(invadersDao))
 		for _, invaderDao := range invadersDao {
 			invaders = append(invaders, Invader{
-				InvaderID:  invaderDao.ID,
-				Picture:    invaderDao.Picture,
-				Confidence: invaderDao.Confidence,
+				InvaderID:   invaderDao.ID,
+				Picture:     invaderDao.Picture,
+				PictureMime: invaderDao.PictureMime,
+				Confidence:  invaderDao.Confidence,
 			})
 		}
 

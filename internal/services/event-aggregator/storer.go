@@ -145,6 +145,7 @@ func (s *Storer) storeMovementEvent(ctx context.Context, transaction *ent.Tx, mo
 		AddEvent(eventModel).
 		SetID(uuid.Must(uuid.NewV7())).
 		SetPicture(movementInfo.GetPicture()).
+		SetPictureMime(movementInfo.GetPictureMime()).
 		Save(ctx)
 	if err != nil {
 		span.SetStatus(codes.Error, "failed to create movement information in database")
@@ -197,6 +198,7 @@ func (s *Storer) storeInvadedEvent(ctx context.Context, transaction *ent.Tx, inv
 			AddEvent(eventModel).
 			SetID(uuid.Must(uuid.NewV7())).
 			SetPicture(invader.GetPicture()).
+			SetPictureMime(invader.GetPictureMime()).
 			SetConfidence(float64(invader.GetConfidence()))
 
 		invaderBuilders = append(invaderBuilders, invaderBuilder)

@@ -41,7 +41,7 @@ func (m *MovementEvent) GetType() EventType {
 	return EventTypeMovement
 }
 
-func (m *MovementEvent) GetPicture() []byte {
+func (m *MovementEvent) GetPicture() (content []byte, mime string) {
 	return m.Movement.GetPicture()
 }
 
@@ -99,31 +99,33 @@ func (e *Metadata) GetParentEventID() (uuid.UUID, bool) {
 
 // Movement represents movement information of an event.
 type Movement struct {
-	MovementID uuid.UUID `json:"movement_id"`
-	Picture    []byte    `json:"picture"`
+	MovementID  uuid.UUID `json:"movement_id"`
+	Picture     []byte    `json:"picture"`
+	PictureMime string    `json:"picture_mime"`
 }
 
 func (m *Movement) GetMovementID() uuid.UUID {
 	return m.MovementID
 }
 
-func (m *Movement) GetPicture() []byte {
-	return m.Picture
+func (m *Movement) GetPicture() (content []byte, mime string) {
+	return m.Picture, m.PictureMime
 }
 
 // Invader represents invaders of an event.
 type Invader struct {
-	InvaderID  uuid.UUID `json:"invader_id"`
-	Picture    []byte    `json:"picture"`
-	Confidence float64   `json:"confidence"`
+	InvaderID   uuid.UUID `json:"invader_id"`
+	Picture     []byte    `json:"picture"`
+	PictureMime string    `json:"picture_mime"`
+	Confidence  float64   `json:"confidence"`
 }
 
 func (i *Invader) GetInvaderID() uuid.UUID {
 	return i.InvaderID
 }
 
-func (i *Invader) GetPicture() []byte {
-	return i.Picture
+func (i *Invader) GetPicture() (content []byte, mime string) {
+	return i.Picture, i.PictureMime
 }
 
 func (i *Invader) GetConfidence() float64 {

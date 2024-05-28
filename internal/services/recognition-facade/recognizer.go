@@ -42,13 +42,14 @@ func NewRecognizer(service *Service) (*Recognizer, error) {
 }
 
 // recognizeEntities calls the entityrecognitionpb.EntityRecognitionClient to recognize the entities in the image.
-func (r *Recognizer) recognizeEntities(ctx context.Context, image []byte) ([]*entityrecognitionpb.Entity, error) {
+func (r *Recognizer) recognizeEntities(ctx context.Context, image []byte, imageMime string) ([]*entityrecognitionpb.Entity, error) {
 	ctx, span := r.tracer.Start(ctx, "recognizeEntities")
 	defer span.End()
 
 	span.AddEvent("call EntityRecognitionClient to recognition entities in the image")
 	recognition, err := r.entityRecognitionClient.Recognize(ctx, &entityrecognitionpb.RecognizeRequest{
-		Image: image,
+		Image:     image,
+		ImageMime: imageMime,
 	})
 	if err != nil {
 		span.SetStatus(codes.Error, "failed to recognize entities in the image")
@@ -111,7 +112,8 @@ func (r *Recognizer) Run(ctx context.Context, movementEvents <-chan mq.Traceable
 			movementEventID := movementEvent.Metadata.GetEventID()
 
 			span.AddEvent("recognizing entities in the image")
-			entity, err := r.recognizeEntities(ctx, movementEvent.Body.GetMovementInfo().GetPicture())
+			movementInfo := movementEvent.Body.GetMovementInfo()
+			entity, err := r.recognizeEntities(ctx, movementInfo.GetPicture(), movementInfo.GetPictureMime())
 			if err != nil {
 				span.SetStatus(codes.Error, "failed to recognize entities")
 				_ = movementEvent.Reject(true)
@@ -149,8 +151,9 @@ func findHumanInEntities(entities []*entityrecognitionpb.Entity) (invaders []*ev
 	for _, entity := range entities {
 		if entity.GetLabel() == "person" {
 			invaders = append(invaders, &eventpb.Invader{
-				Picture:    entity.GetImage(),
-				Confidence: entity.GetConfidence(),
+				Picture:     entity.GetImage(),
+				PictureMime: entity.GetImageMime(),
+				Confidence:  entity.GetConfidence(),
 			})
 		}
 	}
