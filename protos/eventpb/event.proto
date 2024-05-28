@@ -5,6 +5,7 @@ option go_package = "github.com/nkust-monitor-iot-project-2024/central/protos/ev
 
 message MovementInfo {
     bytes picture = 2;
+    string picture_mime = 3;
 }
 
 message InvadedInfo {
@@ -14,6 +15,7 @@ message InvadedInfo {
 
 message Invader {
     bytes picture = 1;
+    string picture_mime = 3;
     float confidence = 2;
 }
 
