@@ -8,6 +8,8 @@ import (
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.uber.org/fx"
 
@@ -17,8 +19,6 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -128,20 +128,11 @@ func newTraceProvider(ctx context.Context, config utils.Config, serviceResource 
 	traceExporter, err := func() (trace.SpanExporter, error) {
 		endpointConfig := config.Cut("telemetry.endpoint")
 
-		if baselimeApiKey := endpointConfig.String("baselime.api_key"); baselimeApiKey != "" {
-			dataset := endpointConfig.String("baselime.dataset")
-			if dataset == "" {
-				dataset = "otel"
-			}
-
+		if otlpEndpoint := endpointConfig.String("otlp.endpoint"); otlpEndpoint != "" {
 			exporter, err := otlptracehttp.New(ctx,
-				otlptracehttp.WithEndpointURL("https://otel.baselime.io/v1/traces"),
-				otlptracehttp.WithHeaders(map[string]string{
-					"x-api-key":          baselimeApiKey,
-					"x-baselime-dataset": dataset,
-				}))
+				otlptracehttp.WithEndpoint(otlpEndpoint))
 			if err != nil {
-				return nil, fmt.Errorf("set Baselime exporter: %w", err)
+				return nil, fmt.Errorf("set OTLP exporter: %w", err)
 			}
 
 			return exporter, nil
@@ -169,20 +160,11 @@ func newMeterProvider(ctx context.Context, config utils.Config, serviceResource 
 	metricExporter, err := func() (metric.Exporter, error) {
 		endpointConfig := config.Cut("telemetry.endpoint")
 
-		if baselimeApiKey := endpointConfig.String("baselime.api_key"); baselimeApiKey != "" {
-			dataset := endpointConfig.String("baselime.dataset")
-			if dataset == "" {
-				dataset = "otel"
-			}
-
+		if otlpEndpoint := endpointConfig.String("otlp.endpoint"); otlpEndpoint != "" {
 			exporter, err := otlpmetrichttp.New(ctx,
-				otlpmetrichttp.WithEndpointURL("https://otel.baselime.io/v1/metrics"),
-				otlpmetrichttp.WithHeaders(map[string]string{
-					"x-api-key":          baselimeApiKey,
-					"x-baselime-dataset": dataset,
-				}))
+				otlpmetrichttp.WithEndpoint(otlpEndpoint))
 			if err != nil {
-				return nil, fmt.Errorf("set Baselime exporter: %w", err)
+				return nil, fmt.Errorf("set OTLP exporter: %w", err)
 			}
 
 			return exporter, nil
@@ -210,20 +192,11 @@ func newLoggerProvider(ctx context.Context, config utils.Config, serviceResource
 	logExporter, err := func() (log.Exporter, error) {
 		endpointConfig := config.Cut("telemetry.endpoint")
 
-		if baselimeApiKey := endpointConfig.String("baselime.api_key"); baselimeApiKey != "" {
-			dataset := endpointConfig.String("baselime.dataset")
-			if dataset == "" {
-				dataset = "otel"
-			}
-
+		if otlpEndpoint := endpointConfig.String("otlp.endpoint"); otlpEndpoint != "" {
 			exporter, err := otlploghttp.New(ctx,
-				otlploghttp.WithEndpointURL("https://otel.baselime.io/v1/logs"),
-				otlploghttp.WithHeaders(map[string]string{
-					"x-api-key":          baselimeApiKey,
-					"x-baselime-dataset": dataset,
-				}))
+				otlploghttp.WithEndpoint(otlpEndpoint))
 			if err != nil {
-				return nil, fmt.Errorf("set Baselime exporter: %w", err)
+				return nil, fmt.Errorf("set OTLP exporter: %w", err)
 			}
 
 			return exporter, nil
