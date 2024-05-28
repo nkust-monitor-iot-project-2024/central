@@ -108,7 +108,7 @@ func (mq *amqpMQ) createPublishingMessage(ctx context.Context, metadata models.M
 		return "", amqp091.Publishing{}, fmt.Errorf("marshal event: %w", err)
 	}
 
-	return "events.v1." + string(eventType), amqp091.Publishing{
+	return "event.v1." + string(eventType), amqp091.Publishing{
 		ContentType: "application/json",
 		MessageId:   metadata.GetEventID().String(),
 		Timestamp:   metadata.GetEmittedAt(),
