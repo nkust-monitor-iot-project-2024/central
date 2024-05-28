@@ -33,7 +33,7 @@ sslmode = "disable"  # https://www.postgresql.org/docs/current/libpq-ssl.html
 api_key = "${BASELIME_API_KEY}"
 
 # SERVICES – Entity Recognition
-[services.entityrecognition]
+[service.entityrecognition]
 uri = "entity-recognition.your-gpu-machine.internal"
 tls = { cert_file = "/etc/iotmonitor/services/entityrecognition/cert.pem", key_file = "/etc/iotmonitor/services/entityrecognition/key.pem" }
 

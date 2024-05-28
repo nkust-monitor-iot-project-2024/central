@@ -17,6 +17,8 @@ import (
 // FxModule is the fx module for the Service that handles the cleanup.
 var FxModule = fx.Module(
 	"event-aggregator",
+	models.EventRepositoryEntFx,
+	mq.FxModule,
 	fx.Provide(NewStorer),
 	fx.Provide(New),
 	fx.Invoke(func(lifecycle fx.Lifecycle, shutdowner fx.Shutdowner, s *Service) error {

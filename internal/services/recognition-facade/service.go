@@ -7,16 +7,53 @@ package recognition_facade
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
+	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
+	"github.com/nkust-monitor-iot-project-2024/central/internal/discover"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/entityrecognitionpb"
 	"go.uber.org/fx"
 )
 
-// FxModule is the fx module for the recognition-facade service.
-var FxModule = fx.Module("recognition-facade", fx.Provide(New))
+// FxModule is the fx module for the Service that handles the cleanup.
+var FxModule = fx.Module(
+	"recognition-facade",
+	mq.FxModule,
+	discover.EntityRecognitionServiceFxModule,
+	fx.Provide(NewRecognizer),
+	fx.Provide(New),
+	fx.Invoke(func(lifecycle fx.Lifecycle, shutdowner fx.Shutdowner, s *Service) error {
+		ctx, cancel := context.WithCancel(context.Background())
+
+		lifecycle.Append(fx.Hook{
+			OnStart: func(_ context.Context) error {
+				go func() {
+					defer cancel()
+
+					if err := s.Run(ctx); err != nil {
+						if !errors.Is(err, context.Canceled) {
+							slog.Error("recognition facade stopped with errors", slogext.Error(err))
+							_ = shutdowner.Shutdown(fx.ExitCode(1))
+						}
+					}
+
+					slog.InfoContext(ctx, "recognition facade stopped")
+				}()
+				return nil
+			},
+			OnStop: func(_ context.Context) error {
+				cancel()
+				return nil
+			},
+		})
+
+		return nil
+	}),
+)
 
 // Service is the core of the service, "recognition-facade".
 type Service struct {

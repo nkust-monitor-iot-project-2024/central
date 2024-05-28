@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -22,15 +23,26 @@ func main() {
 		panic("rabbitmq address is not set")
 	}
 
-	marshalledBody, err := protojson.Marshal(&eventpb.EventMessage{
-		Event: &eventpb.EventMessage_MovementInfo{
-			MovementInfo: &eventpb.MovementInfo{
-				Picture: []byte{},
+	var bodiesToSend [][]byte
+
+	for i := 1; i <= 7; i++ {
+		picture, err := os.ReadFile(fmt.Sprintf("./examples/emit_event/%d.jpg", i))
+		if err != nil {
+			panic(fmt.Errorf("read picture: %w", err))
+		}
+
+		marshalledBody, err := protojson.Marshal(&eventpb.EventMessage{
+			Event: &eventpb.EventMessage_MovementInfo{
+				MovementInfo: &eventpb.MovementInfo{
+					Picture: picture,
+				},
 			},
-		},
-	})
-	if err != nil {
-		panic(fmt.Errorf("marshal event message: %w", err))
+		})
+		if err != nil {
+			panic(fmt.Errorf("marshal event message: %w", err))
+		}
+
+		bodiesToSend = append(bodiesToSend, marshalledBody)
 	}
 
 	wg := sync.WaitGroup{}
@@ -69,7 +81,7 @@ func main() {
 				panic(fmt.Errorf("declare exchange: %w", err))
 			}
 
-			for j := 0; j < 10; j++ {
+			for v, body := range bodiesToSend {
 				err = ch.Publish("events_topic", "event.v1."+string(models.EventTypeMovement), false, false, amqp091.Publishing{
 					Headers:       nil,
 					ContentType:   "application/json",
@@ -83,12 +95,12 @@ func main() {
 					Type:          "eventpb.EventMessage",
 					UserId:        "",
 					AppId:         "central/example/emit-event",
-					Body:          marshalledBody,
+					Body:          body,
 				})
 				if err != nil {
 					log.Println(fmt.Errorf("publish message: %w", err))
 				}
-				fmt.Println("Event emitted", i, j)
+				fmt.Println("Event emitted", i, v)
 			}
 		}()
 	}

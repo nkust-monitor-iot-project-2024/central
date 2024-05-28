@@ -3,7 +3,7 @@ package utils
 import (
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
 )
 
 // NewResourceBuilder creates a new resource builder function to create the resource.Resource,
