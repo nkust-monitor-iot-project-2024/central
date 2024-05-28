@@ -196,6 +196,16 @@ func ParentEventIDLTE(v uuid.UUID) predicate.Event {
 	return predicate.Event(sql.FieldLTE(FieldParentEventID, v))
 }
 
+// ParentEventIDIsNil applies the IsNil predicate on the "parent_event_id" field.
+func ParentEventIDIsNil() predicate.Event {
+	return predicate.Event(sql.FieldIsNull(FieldParentEventID))
+}
+
+// ParentEventIDNotNil applies the NotNil predicate on the "parent_event_id" field.
+func ParentEventIDNotNil() predicate.Event {
+	return predicate.Event(sql.FieldNotNull(FieldParentEventID))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Event {
 	return predicate.Event(sql.FieldEQ(FieldCreatedAt, v))

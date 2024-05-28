@@ -74,6 +74,12 @@ func (eu *EventUpdate) SetNillableParentEventID(u *uuid.UUID) *EventUpdate {
 	return eu
 }
 
+// ClearParentEventID clears the value of the "parent_event_id" field.
+func (eu *EventUpdate) ClearParentEventID() *EventUpdate {
+	eu.mutation.ClearParentEventID()
+	return eu
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (eu *EventUpdate) SetCreatedAt(t time.Time) *EventUpdate {
 	eu.mutation.SetCreatedAt(t)
@@ -258,6 +264,9 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := eu.mutation.ParentEventID(); ok {
 		_spec.SetField(event.FieldParentEventID, field.TypeUUID, value)
+	}
+	if eu.mutation.ParentEventIDCleared() {
+		_spec.ClearField(event.FieldParentEventID, field.TypeUUID)
 	}
 	if value, ok := eu.mutation.CreatedAt(); ok {
 		_spec.SetField(event.FieldCreatedAt, field.TypeTime, value)
@@ -456,6 +465,12 @@ func (euo *EventUpdateOne) SetNillableParentEventID(u *uuid.UUID) *EventUpdateOn
 	if u != nil {
 		euo.SetParentEventID(*u)
 	}
+	return euo
+}
+
+// ClearParentEventID clears the value of the "parent_event_id" field.
+func (euo *EventUpdateOne) ClearParentEventID() *EventUpdateOne {
+	euo.mutation.ClearParentEventID()
 	return euo
 }
 
@@ -673,6 +688,9 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 	}
 	if value, ok := euo.mutation.ParentEventID(); ok {
 		_spec.SetField(event.FieldParentEventID, field.TypeUUID, value)
+	}
+	if euo.mutation.ParentEventIDCleared() {
+		_spec.ClearField(event.FieldParentEventID, field.TypeUUID)
 	}
 	if value, ok := euo.mutation.CreatedAt(); ok {
 		_spec.SetField(event.FieldCreatedAt, field.TypeTime, value)

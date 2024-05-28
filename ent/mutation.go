@@ -266,9 +266,22 @@ func (m *EventMutation) OldParentEventID(ctx context.Context) (v *uuid.UUID, err
 	return oldValue.ParentEventID, nil
 }
 
+// ClearParentEventID clears the value of the "parent_event_id" field.
+func (m *EventMutation) ClearParentEventID() {
+	m.parent_event_id = nil
+	m.clearedFields[event.FieldParentEventID] = struct{}{}
+}
+
+// ParentEventIDCleared returns if the "parent_event_id" field was cleared in this mutation.
+func (m *EventMutation) ParentEventIDCleared() bool {
+	_, ok := m.clearedFields[event.FieldParentEventID]
+	return ok
+}
+
 // ResetParentEventID resets all changes to the "parent_event_id" field.
 func (m *EventMutation) ResetParentEventID() {
 	m.parent_event_id = nil
+	delete(m.clearedFields, event.FieldParentEventID)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -615,7 +628,11 @@ func (m *EventMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *EventMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(event.FieldParentEventID) {
+		fields = append(fields, event.FieldParentEventID)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -628,6 +645,11 @@ func (m *EventMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *EventMutation) ClearField(name string) error {
+	switch name {
+	case event.FieldParentEventID:
+		m.ClearParentEventID()
+		return nil
+	}
 	return fmt.Errorf("unknown Event nullable field %s", name)
 }
 

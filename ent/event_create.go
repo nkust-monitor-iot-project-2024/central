@@ -42,6 +42,14 @@ func (ec *EventCreate) SetParentEventID(u uuid.UUID) *EventCreate {
 	return ec
 }
 
+// SetNillableParentEventID sets the "parent_event_id" field if the given value is not nil.
+func (ec *EventCreate) SetNillableParentEventID(u *uuid.UUID) *EventCreate {
+	if u != nil {
+		ec.SetParentEventID(*u)
+	}
+	return ec
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (ec *EventCreate) SetCreatedAt(t time.Time) *EventCreate {
 	ec.mutation.SetCreatedAt(t)
@@ -160,9 +168,6 @@ func (ec *EventCreate) check() error {
 	}
 	if _, ok := ec.mutation.DeviceID(); !ok {
 		return &ValidationError{Name: "device_id", err: errors.New(`ent: missing required field "Event.device_id"`)}
-	}
-	if _, ok := ec.mutation.ParentEventID(); !ok {
-		return &ValidationError{Name: "parent_event_id", err: errors.New(`ent: missing required field "Event.parent_event_id"`)}
 	}
 	if _, ok := ec.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Event.created_at"`)}

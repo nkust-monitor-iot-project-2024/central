@@ -20,7 +20,7 @@ func (Event) Fields() []ent.Field {
 		field.UUID("id", uuid.New()),
 		field.Enum("type").Values("invaded", "movement", "move"),
 		field.String("device_id"),
-		field.UUID("parent_event_id", uuid.New()).Nillable(),
+		field.UUID("parent_event_id", uuid.New()).Nillable().Optional(),
 		field.Time("created_at").Default(time.Now),
 	}
 }
