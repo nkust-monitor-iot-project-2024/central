@@ -3,8 +3,11 @@ package discover
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/entityrecognitionpb"
@@ -81,6 +84,7 @@ func (d *Discoverer) DiscoverEntityRecognitionService(ctx context.Context) (enti
 //
 // The connection is encrypted with the client certificate specified in
 // "service.[serviceName].tls.cert_file" and "service.[serviceName].tls.key_file".
+// The CA certificate can be specified in "service.[serviceName].tls.ca_cert_file".
 //
 // It DOES NOT check if the service is available or not.
 // It is your responsibility to handle the connection error if the service is not available.
@@ -96,6 +100,7 @@ func (d *Discoverer) CreateGRPCClient(ctx context.Context, serviceName string, f
 
 	certFile := serviceConf.String("tls.cert_file")
 	keyFile := serviceConf.String("tls.key_file")
+	caCertFile := serviceConf.String("tls.ca_cert_file")
 	transportCredentials := mo.None[credentials.TransportCredentials]()
 
 	if certFile != "" && keyFile != "" {
@@ -103,15 +108,34 @@ func (d *Discoverer) CreateGRPCClient(ctx context.Context, serviceName string, f
 			slog.String("certFile", certFile),
 			slog.String("keyFile", keyFile))
 
-		cred, err := credentials.NewServerTLSFromFile(certFile, keyFile)
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 		if err != nil {
-			span.SetStatus(codes.Error, "failed to load TLS credentials")
+			span.SetStatus(codes.Error, "failed to load TLS certificate")
 			span.RecordError(err)
 
-			return nil, fmt.Errorf("load credentials: %w", err)
+			return nil, fmt.Errorf("load certificate: %w", err)
 		}
 
-		transportCredentials = mo.Some(cred)
+		var caCertPool *x509.CertPool
+		if caCertFile != "" {
+			caCertPool = x509.NewCertPool()
+			caCertPEM, err := os.ReadFile(caCertFile)
+			if err != nil {
+				span.SetStatus(codes.Error, "failed to read CA certificate")
+				span.RecordError(err)
+
+				return nil, fmt.Errorf("read CA certificate: %w", err)
+			}
+
+			if !caCertPool.AppendCertsFromPEM(caCertPEM) {
+				return nil, fmt.Errorf("append CA certificate: %w", err)
+			}
+		}
+
+		transportCredentials = mo.Some(credentials.NewTLS(&tls.Config{
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      caCertPool,
+		}))
 	} else {
 		d.logger.WarnContext(
 			ctx,
