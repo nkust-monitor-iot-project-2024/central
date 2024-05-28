@@ -31,7 +31,7 @@ type MovementEventSubscriber interface {
 }
 
 func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableTypedDelivery[models.Metadata, *MovementEventMessage], error) {
-	_, span := mq.tracer.Start(ctx, "mq/subscribe_movement_event")
+	_, span := mq.tracer.Start(ctx, "mq/subscribe_movement_event", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
 	span.AddEvent("prepare AMQP [subscribe] channel")
@@ -145,7 +145,7 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 
 				ctx, span := mq.tracer.Start(ctx, "mq/subscribe_movement_event/handle_raw_message", trace.WithAttributes(
 					attribute.String("message_id", rawMessage.MessageId),
-				))
+				), trace.WithSpanKind(trace.SpanKindConsumer))
 				defer span.End()
 
 				span.AddEvent("unmarshal raw event message")

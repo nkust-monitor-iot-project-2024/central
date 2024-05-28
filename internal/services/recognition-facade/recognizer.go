@@ -43,7 +43,7 @@ func NewRecognizer(service *Service) (*Recognizer, error) {
 
 // recognizeEntities calls the entityrecognitionpb.EntityRecognitionClient to recognize the entities in the image.
 func (r *Recognizer) recognizeEntities(ctx context.Context, image []byte, imageMime string) ([]*entityrecognitionpb.Entity, error) {
-	ctx, span := r.tracer.Start(ctx, "recognizeEntities")
+	ctx, span := r.tracer.Start(ctx, "recognizeEntities", trace.WithSpanKind(trace.SpanKindClient))
 	defer span.End()
 
 	span.AddEvent("call EntityRecognitionClient to recognition entities in the image")
@@ -65,7 +65,7 @@ func (r *Recognizer) recognizeEntities(ctx context.Context, image []byte, imageM
 
 // triggerInvadedEvent send the invaded event with the parent movement ID to Message Queue.
 func (r *Recognizer) triggerInvadedEvent(ctx context.Context, parentMovementID uuid.UUID, invaders []*eventpb.Invader) error {
-	ctx, span := r.tracer.Start(ctx, "recognition-facade/recognizer/trigger_invaded_event")
+	ctx, span := r.tracer.Start(ctx, "recognition-facade/recognizer/trigger_invaded_event", trace.WithSpanKind(trace.SpanKindProducer))
 	defer span.End()
 
 	span.AddEvent("create invaded event")
@@ -105,7 +105,8 @@ func (r *Recognizer) Run(ctx context.Context, movementEvents <-chan mq.Traceable
 			ctx, span := r.tracer.Start(ctx, "recognition-facade/recognizer/run/handle_event",
 				trace.WithAttributes(
 					otelattrext.UUID("event_id", movementEvent.Metadata.GetEventID()),
-					attribute.String("device_id", movementEvent.Metadata.GetDeviceID())))
+					attribute.String("device_id", movementEvent.Metadata.GetDeviceID())),
+				trace.WithSpanKind(trace.SpanKindConsumer))
 			defer span.End()
 
 			span.AddEvent("extracing movement information")

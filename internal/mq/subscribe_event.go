@@ -41,7 +41,7 @@ type TraceableTypedDelivery[M any, B any] struct {
 
 // SubscribeEvent subscribes to the event messages.
 func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], error) {
-	_, span := mq.tracer.Start(ctx, "mq/subscribe_event")
+	_, span := mq.tracer.Start(ctx, "mq/subscribe_event", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
 	span.AddEvent("prepare AMQP [subscribe] channel")
@@ -155,7 +155,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 
 				ctx, span := mq.tracer.Start(ctx, "mq/subscribe_event/handle_raw_message", trace.WithAttributes(
 					attribute.String("message_id", rawMessage.MessageId),
-				))
+				), trace.WithSpanKind(trace.SpanKindConsumer))
 				defer span.End()
 
 				span.AddEvent("unmarshal raw event message")
@@ -188,7 +188,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 // unmarshalRawEventMessage handles the received amqp091.Delivery, process it, and send it to ch.
 func (mq *amqpMQ) unmarshalRawEventMessage(ctx context.Context, message amqp091.Delivery) (*TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], error) {
 	ctx = mq.propagator.Extract(ctx, amqpext.NewHeaderSupplier(message.Headers))
-	ctx, span := mq.tracer.Start(ctx, "mq/unmarshal_raw_event_message")
+	ctx, span := mq.tracer.Start(ctx, "mq/unmarshal_raw_event_message", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
 	span.AddEvent("extract metadata from header")

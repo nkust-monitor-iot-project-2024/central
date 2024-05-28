@@ -10,6 +10,7 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
 	"github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -23,7 +24,7 @@ type EventPublisher interface {
 //
 // amqpMQ will open a publish-only channel, as the amqp library advised.
 func (mq *amqpMQ) PublishEvent(ctx context.Context, metadata models.Metadata, event *eventpb.EventMessage) error {
-	_, span := mq.tracer.Start(ctx, "mq/publish_event")
+	_, span := mq.tracer.Start(ctx, "mq/publish_event", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
 	span.AddEvent("prepare AMQP [publish] channel")

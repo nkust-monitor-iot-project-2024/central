@@ -48,7 +48,7 @@ func NewStorer(service *Service) (*Storer, error) {
 // and the event to the corresponding store functions (storeMovementEvent),
 // and commits the transaction.
 func (s *Storer) storeSingleEvent(ctx context.Context, event *eventpb.EventMessage, metadata models.Metadata) bool {
-	ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/store_single_event")
+	ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/store_single_event", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
 	s.logger.DebugContext(ctx, "storing single event", slog.Any("metadata", metadata))
@@ -119,7 +119,7 @@ func (s *Storer) storeSingleEvent(ctx context.Context, event *eventpb.EventMessa
 
 // storeMovementEvent stores the movement event in the database.
 func (s *Storer) storeMovementEvent(ctx context.Context, transaction *ent.Tx, movementInfo *eventpb.MovementInfo, metadata models.Metadata) bool {
-	ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/store_movement_event")
+	ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/store_movement_event", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
 	eventID := metadata.GetEventID()
@@ -166,7 +166,7 @@ func (s *Storer) storeMovementEvent(ctx context.Context, transaction *ent.Tx, mo
 
 // storeInvadedEvent stores the invaded event in the database.
 func (s *Storer) storeInvadedEvent(ctx context.Context, transaction *ent.Tx, invadedInfo *eventpb.InvadedInfo, metadata models.Metadata) (status bool) {
-	ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/store_invaded_event")
+	ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/store_invaded_event", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
 	span.AddEvent("create event with invaded information in database")
@@ -232,7 +232,8 @@ func (s *Storer) Run(ctx context.Context, events <-chan mq.TraceableTypedDeliver
 			ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/run/handle_event",
 				trace.WithAttributes(
 					otelattrext.UUID("event_id", event.Metadata.GetEventID()),
-					attribute.String("device_id", event.Metadata.GetDeviceID())))
+					attribute.String("device_id", event.Metadata.GetDeviceID())),
+				trace.WithSpanKind(trace.SpanKindConsumer))
 			defer span.End()
 
 			if ok := s.storeSingleEvent(ctx, event.Body, event.Metadata); !ok {

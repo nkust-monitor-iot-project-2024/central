@@ -49,7 +49,7 @@ func NewDiscoverer(config utils.Config) *Discoverer {
 //
 // For more information about the connection details, see Discoverer.CreateGRPCClient.
 func (d *Discoverer) DiscoverEntityRecognitionService(ctx context.Context) (entityrecognitionpb.EntityRecognitionClient, error) {
-	ctx, span := d.tracer.Start(ctx, "discoverer/DiscoverEntityRecognitionService")
+	ctx, span := d.tracer.Start(ctx, "discoverer/DiscoverEntityRecognitionService", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
 	const serviceName = "entityrecognition"
@@ -91,7 +91,7 @@ func (d *Discoverer) DiscoverEntityRecognitionService(ctx context.Context) (enti
 //
 // The ctx is only used in tracing – closing ctx will not close the connection.
 func (d *Discoverer) CreateGRPCClient(ctx context.Context, serviceName string, fallbackURI string) (*grpc.ClientConn, error) {
-	ctx, span := d.tracer.Start(ctx, "discoverer/CreateGRPCClient")
+	ctx, span := d.tracer.Start(ctx, "discoverer/CreateGRPCClient", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
 	serviceConf := d.config.Cut("service." + serviceName)
