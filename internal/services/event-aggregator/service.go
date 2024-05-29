@@ -37,6 +37,7 @@ var FxModule = fx.Module(
 					}
 
 					slog.InfoContext(ctx, "event service stopped")
+					_ = shutdowner.Shutdown(fx.ExitCode(0))
 				}()
 				return nil
 			},

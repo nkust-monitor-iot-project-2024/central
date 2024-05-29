@@ -41,6 +41,7 @@ var FxModule = fx.Module(
 					}
 
 					slog.InfoContext(ctx, "recognition facade stopped")
+					_ = shutdowner.Shutdown(fx.ExitCode(0))
 				}()
 				return nil
 			},
