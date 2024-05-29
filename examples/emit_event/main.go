@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -25,8 +26,13 @@ func main() {
 
 	var bodiesToSend [][]byte
 
-	for i := 1; i <= 7; i++ {
-		picture, err := os.ReadFile(fmt.Sprintf("./examples/emit_event/%d.jpg", i))
+	files, err := filepath.Glob("./examples/emit_event/assets")
+	if err != nil {
+		panic(fmt.Errorf("glob pictures: %w", err))
+	}
+
+	for _, file := range files {
+		picture, err := os.ReadFile(file)
 		if err != nil {
 			panic(fmt.Errorf("read picture: %w", err))
 		}
