@@ -26,7 +26,7 @@ func main() {
 
 	var bodiesToSend [][]byte
 
-	files, err := filepath.Glob("./examples/emit_event/assets")
+	files, err := filepath.Glob("./examples/emit_event/assets/*")
 	if err != nil {
 		panic(fmt.Errorf("glob pictures: %w", err))
 	}
