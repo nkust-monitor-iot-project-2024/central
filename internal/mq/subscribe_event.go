@@ -178,3 +178,14 @@ func (w *amqpTraceableEventMessageDelivery) Body() (*eventpb.EventMessage, error
 
 	return event, nil
 }
+
+func (w *amqpTraceableEventMessageDelivery) Reject(requeue bool) error {
+	return w.Delivery.Reject(requeue)
+}
+
+func (w *amqpTraceableEventMessageDelivery) Ack() error {
+	return w.Delivery.Ack(false)
+}
+
+var _ Rejectable = (*amqpTraceableEventMessageDelivery)(nil)
+var _ Ackable = (*amqpTraceableEventMessageDelivery)(nil)

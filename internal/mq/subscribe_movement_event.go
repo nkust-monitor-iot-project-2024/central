@@ -146,3 +146,15 @@ func (t *traceableMovementEventMessageDelivery) Body() (MovementEventMessage, er
 
 	return MovementEventMessage{MovementInfo: body.GetMovementInfo()}, nil
 }
+
+// Reject rejects the message.
+func (t *traceableMovementEventMessageDelivery) Reject(requeue bool) error {
+	return Reject(t.TraceableEventDelivery, requeue)
+}
+
+func (t *traceableMovementEventMessageDelivery) Ack() error {
+	return Ack(t.TraceableEventDelivery)
+}
+
+var _ Rejectable = (*traceableMovementEventMessageDelivery)(nil)
+var _ Ackable = (*traceableMovementEventMessageDelivery)(nil)
