@@ -103,11 +103,11 @@ func (r *Recognizer) triggerInvadedEvent(ctx context.Context, parentMovementID u
 func (r *Recognizer) Run(ctx context.Context, movementEvents <-chan mq.TraceableTypedDelivery[models.Metadata, *mq.MovementEventMessage]) {
 	for movementEvent := range movementEvents {
 		func() {
-			ctx := trace.ContextWithSpanContext(ctx, movementEvent.SpanContext)
 			ctx, span := r.tracer.Start(ctx, "recognition-facade/recognizer/run/handle_event",
 				trace.WithAttributes(
 					otelattrext.UUID("event_id", movementEvent.Metadata.GetEventID()),
 					attribute.String("device_id", movementEvent.Metadata.GetDeviceID())),
+				trace.WithLinks(trace.Link{SpanContext: movementEvent.SpanContext}),
 				trace.WithSpanKind(trace.SpanKindConsumer))
 			defer span.End()
 

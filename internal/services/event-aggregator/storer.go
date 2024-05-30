@@ -228,11 +228,11 @@ func (s *Storer) storeInvadedEvent(ctx context.Context, transaction *ent.Tx, inv
 func (s *Storer) Run(ctx context.Context, events <-chan mq.TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]) {
 	for event := range events {
 		func() {
-			ctx := trace.ContextWithSpanContext(ctx, event.SpanContext)
 			ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/run/handle_event",
 				trace.WithAttributes(
 					otelattrext.UUID("event_id", event.Metadata.GetEventID()),
 					attribute.String("device_id", event.Metadata.GetDeviceID())),
+				trace.WithLinks(trace.Link{SpanContext: event.SpanContext}),
 				trace.WithSpanKind(trace.SpanKindConsumer))
 			defer span.End()
 
