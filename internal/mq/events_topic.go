@@ -26,7 +26,10 @@ func declareEventsTopic(channel *amqp091.Channel) (string, error) {
 // declareDurableQueueToTopic declares a durable queue to the events topic exchange.
 //
 // It returns the queue name.
-func declareDurableQueueToTopic(channel *amqp091.Channel, topicName string, eventType mo.Option[models.EventType]) (amqp091.Queue, error) {
+func declareDurableQueueToTopic(channel *amqp091.Channel, topicName string, eventType mo.Option[models.EventType]) (queue amqp091.Queue, prefetchCount int, err error) {
+	const prefetchCountQos = 64
+	const prefetchSizeQos = 0
+
 	key := getMessageKey(eventType)
 
 	queueName := func() string {
@@ -37,7 +40,7 @@ func declareDurableQueueToTopic(channel *amqp091.Channel, topicName string, even
 		return "iot-monitoring-all-events"
 	}()
 
-	queue, err := channel.QueueDeclare(
+	queue, err = channel.QueueDeclare(
 		queueName,
 		true,
 		false,
@@ -46,7 +49,7 @@ func declareDurableQueueToTopic(channel *amqp091.Channel, topicName string, even
 		nil,
 	)
 	if err != nil {
-		return queue, err
+		return queue, 0, err
 	}
 
 	err = channel.QueueBind(
@@ -57,14 +60,14 @@ func declareDurableQueueToTopic(channel *amqp091.Channel, topicName string, even
 		nil,
 	)
 	if err != nil {
-		return queue, err
+		return queue, 0, err
 	}
 
-	if err := channel.Qos(64, 0, false); err != nil {
-		return queue, fmt.Errorf("set QoS: %w", err)
+	if err := channel.Qos(prefetchCountQos, prefetchSizeQos, false); err != nil {
+		return queue, 0, fmt.Errorf("set QoS: %w", err)
 	}
 
-	return queue, nil
+	return queue, prefetchCountQos, nil
 }
 
 // getMessageKey returns the routing key for the event type.

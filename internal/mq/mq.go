@@ -53,7 +53,7 @@ type amqpMQ struct {
 	mqAddress string
 
 	// pub/sub separated connections as the AMQP library advised.
-	// you should always call getXXXConnection to get the channel singleton
+	// you should always call getSingletonXXXConnection to get the channel singleton
 	// (it handles the connection opening and closing).
 
 	pubConn *amqp091.Connection
@@ -106,7 +106,7 @@ func (mq *amqpMQ) getSingletonPublishConnection() (*amqp091.Connection, error) {
 	if mq.pubConn == nil || mq.pubConn.IsClosed() {
 		conn, err := mq.openMQConnection()
 		if err != nil {
-			return nil, fmt.Errorf("open connection: %w", err)
+			return nil, fmt.Errorf("open publish connection: %w", err)
 		}
 
 		mq.pubConn = conn
@@ -119,7 +119,7 @@ func (mq *amqpMQ) getSingletonSubscribeConnection() (*amqp091.Connection, error)
 	if mq.subConn == nil || mq.subConn.IsClosed() {
 		conn, err := mq.openMQConnection()
 		if err != nil {
-			return nil, fmt.Errorf("open connection: %w", err)
+			return nil, fmt.Errorf("open subscribe connection: %w", err)
 		}
 
 		mq.subConn = conn

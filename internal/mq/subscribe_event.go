@@ -4,17 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
-	"sync"
 
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq/amqpext"
+	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
 	"github.com/rabbitmq/amqp091-go"
 	"github.com/samber/mo"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -22,28 +21,23 @@ import (
 // EventSubscriber is the interface for services to subscribe to event messages.
 type EventSubscriber interface {
 	// SubscribeEvent subscribes to the event messages.
-	SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], error)
+	SubscribeEvent(ctx context.Context) (<-chan TraceableEventDelivery, error)
 }
 
-// TypedDelivery is a wrapper around amqp091.Delivery that includes the typed metadata and body.
-type TypedDelivery[M any, B any] struct {
-	amqp091.Delivery
-
-	Metadata M
-	Body     B
-}
-
-// TraceableTypedDelivery is a wrapper around TypedDelivery that includes the trace context.
-type TraceableTypedDelivery[M any, B any] struct {
-	TypedDelivery[M, B]
-
-	SpanContext trace.SpanContext
+type TraceableEventDelivery interface {
+	Extract(ctx context.Context, propagator propagation.TextMapPropagator) context.Context
+	Metadata() (models.Metadata, error)
+	Body() (*eventpb.EventMessage, error)
 }
 
 // SubscribeEvent subscribes to the event messages.
-func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], error) {
+func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (deliveryChan <-chan TraceableEventDelivery, cleanup func() error, err error) {
+	const consumer = "subscribe-event"
+
 	_, span := mq.tracer.Start(ctx, "mq/subscribe_event", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
+
+	cs := utils.NewCleanupStack()
 
 	span.AddEvent("prepare AMQP [subscribe] channel")
 	mqConnection, err := mq.getSingletonSubscribeConnection()
@@ -51,19 +45,16 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 		span.SetStatus(codes.Error, "get subscribe channel failed")
 		span.RecordError(err)
 
-		return nil, fmt.Errorf("get subscribe channel: %w", err)
+		return nil, cs.Cleanup, fmt.Errorf("get subscribe channel: %w", err)
 	}
 	mqChannel, err := mqConnection.Channel()
 	if err != nil {
 		span.SetStatus(codes.Error, "get subscribe channel failed")
 		span.RecordError(err)
 
-		return nil, fmt.Errorf("get subscribe channel: %w", err)
+		return nil, cs.Cleanup, fmt.Errorf("get subscribe channel: %w", err)
 	}
-	defer func(mqChannel *amqp091.Channel) {
-		_ = mqChannel.Close()
-	}(mqChannel)
-	span.AddEvent("prepared AMQP [subscribe] channel")
+	cs.Push(mqChannel.Close)
 
 	span.AddEvent("prepare AMQP queue")
 	exchangeName, err := declareEventsTopic(mqChannel)
@@ -71,23 +62,21 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 		span.SetStatus(codes.Error, "declare exchange failed")
 		span.RecordError(err)
 
-		return nil, fmt.Errorf("declare exchange: %w", err)
+		return nil, cs.Cleanup, fmt.Errorf("declare exchange: %w", err)
 	}
 
-	queue, err := declareDurableQueueToTopic(mqChannel, exchangeName, mo.None[models.EventType]())
+	queue, prefetchCount, err := declareDurableQueueToTopic(mqChannel, exchangeName, mo.None[models.EventType]())
 	if err != nil {
 		span.SetStatus(codes.Error, "declare queue failed")
 		span.RecordError(err)
 
-		return nil, fmt.Errorf("declare queue: %w", err)
+		return nil, cs.Cleanup, fmt.Errorf("declare queue: %w", err)
 	}
-	span.AddEvent("prepared the AMQP queue")
 
 	span.AddEvent("prepare raw message channel from AMQP")
-	rawMessageCh, err := mqChannel.ConsumeWithContext(
-		ctx,
+	rawMessageCh, err := mqChannel.Consume(
 		queue.Name,
-		"",
+		consumer,
 		false,
 		false,
 		false,
@@ -98,120 +87,48 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 		span.SetStatus(codes.Error, "consume failed")
 		span.RecordError(err)
 
-		return nil, fmt.Errorf("consume: %w", err)
+		return nil, cs.Cleanup, fmt.Errorf("consume: %w", err)
 	}
-	span.AddEvent("prepared raw message channel from AMQP")
+	cs.Push(func() error {
+		return mqChannel.Cancel(consumer, false)
+	})
 
-	eventsCh := make(chan TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], 64)
+	eventsCh := make(chan TraceableEventDelivery, prefetchCount)
+	span.AddEvent("create a goroutine to map raw messages to amqpTraceableEventMessageDelivery")
 
-	// handle raw messages
-	span.AddEvent("create a goroutine to handle raw messages")
 	go func() {
-		wg := sync.WaitGroup{}
-
-		for {
-			if err := ctx.Err(); err != nil {
-				slog.Debug("fuck, why context is cancelled??")
-				break
-			}
-			if mqChannel.IsClosed() {
-				// If the channel is closed, we may receive a lot of
-				// zero-value messages, which is not expected.
-				slog.Debug("fuck, why channel is cancelled??", slog.Bool("ctxCancelled", ctx.Err() != nil))
-				break
+		for rawMessage := range rawMessageCh {
+			// If the Acknowledger is nil, it means this message is not valid.
+			if rawMessage.Acknowledger == nil {
+				_ = rawMessage.Reject(false)
+				continue
 			}
 
-			rawMessage := <-rawMessageCh
-
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-
-				ctx, span := mq.tracer.Start(ctx, "mq/subscribe_event/handle_raw_message", trace.WithAttributes(
-					attribute.String("message_id", rawMessage.MessageId),
-				), trace.WithSpanKind(trace.SpanKindInternal))
-				defer span.End()
-
-				span.AddEvent("unmarshal raw event message")
-				typedDelivery, err := mq.unmarshalRawEventMessage(ctx, rawMessage)
-				if err != nil {
-					span.SetStatus(codes.Error, "failed to unmarshal raw event message")
-					span.RecordError(err)
-
-					_ = rawMessage.Reject(false)
-					return
-				}
-				span.AddEvent("done unmarshalled raw event message")
-
-				span.AddEvent("send unmarshalled event message to eventsCh")
-				eventsCh <- *typedDelivery
-				span.AddEvent("done sent unmarshalled event message to eventsCh")
-
-				span.SetStatus(codes.Ok, "handle succeed")
-			}()
+			eventsCh <- &amqpTraceableEventMessageDelivery{Delivery: rawMessage}
 		}
 
-		wg.Wait()
 		close(eventsCh)
 	}()
 
-	span.SetStatus(codes.Ok, "created a subscriber channel of all_v1_events")
-	return eventsCh, nil
+	span.SetStatus(codes.Ok, "created a subscriber channel of "+queue.Name)
+	return eventsCh, cs.Cleanup, nil
 }
 
-// unmarshalRawEventMessage handles the received amqp091.Delivery, process it, and send it to ch.
-func (mq *amqpMQ) unmarshalRawEventMessage(ctx context.Context, message amqp091.Delivery) (*TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage], error) {
-	ctx = mq.propagator.Extract(ctx, amqpext.NewHeaderSupplier(message.Headers))
-	ctx, span := mq.tracer.Start(ctx, "mq/unmarshal_raw_event_message", trace.WithSpanKind(trace.SpanKindInternal))
-	defer span.End()
-
-	span.AddEvent("extract metadata from header")
-	if message.ContentType != "application/json" || message.Type != "eventpb.EventMessage" || message.Timestamp.IsZero() {
-		span.SetStatus(codes.Error, "invalid header")
-
-		return nil, errors.New("invalid header")
-	}
-
-	metadata, err := extractMetadataFromHeader(message)
-	if err != nil {
-		span.SetStatus(codes.Error, "extract metadata failed")
-		span.RecordError(err)
-
-		return nil, fmt.Errorf("extract metadata: %w", err)
-	}
-	span.AddEvent("extracted metadata from header")
-
-	event := &eventpb.EventMessage{}
-
-	span.AddEvent("unmarshal message body")
-	if err := protojson.Unmarshal(message.Body, event); err != nil {
-		span.SetStatus(codes.Error, "unmarshal failed")
-		span.RecordError(err)
-
-		return nil, fmt.Errorf("unmarshal: %w", err)
-	}
-	span.AddEvent("unmarshaled message body")
-
-	select {
-	case <-ctx.Done():
-		span.SetStatus(codes.Unset, "cancelled")
-		return nil, ctx.Err()
-	default:
-		span.SetStatus(codes.Ok, "done handling raw message")
-		return &TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]{
-			TypedDelivery: TypedDelivery[models.Metadata, *eventpb.EventMessage]{
-				Delivery: message,
-				Metadata: metadata,
-				Body:     event,
-			},
-			SpanContext: span.SpanContext(),
-		}, nil
-	}
+// amqpTraceableEventMessageDelivery is a wrapper around amqp091.Delivery that includes a function
+// to extract the metadata and the body from Delivery, and provide the span extractor of
+// the Delivery.
+type amqpTraceableEventMessageDelivery struct {
+	amqp091.Delivery
 }
 
-// extractMetadataFromHeader extracts the models.Metadata from the AMQP header.
-func extractMetadataFromHeader(delivery amqp091.Delivery) (models.Metadata, error) {
-	eventID := delivery.MessageId
+func (w *amqpTraceableEventMessageDelivery) Extract(ctx context.Context, propagator propagation.TextMapPropagator) context.Context {
+	supplier := amqpext.NewHeaderSupplier(w.Headers)
+
+	return propagator.Extract(ctx, supplier)
+}
+
+func (w *amqpTraceableEventMessageDelivery) Metadata() (models.Metadata, error) {
+	eventID := w.Delivery.MessageId
 	if eventID == "" {
 		return models.Metadata{}, errors.New("missing or invalid MessageId (-> event_id)")
 	}
@@ -220,16 +137,30 @@ func extractMetadataFromHeader(delivery amqp091.Delivery) (models.Metadata, erro
 		return models.Metadata{}, fmt.Errorf("parse event_id: %w", err)
 	}
 
-	deviceID := delivery.AppId
+	deviceID := w.Delivery.AppId
 	if deviceID == "" {
 		return models.Metadata{}, errors.New("missing or invalid AppId (-> device_id)")
 	}
 
-	eventTs := delivery.Timestamp
+	eventTs := w.Delivery.Timestamp
 
 	return models.Metadata{
 		EventID:   eventUUID,
 		DeviceID:  deviceID,
 		EmittedAt: eventTs,
 	}, nil
+}
+
+func (w *amqpTraceableEventMessageDelivery) Body() (*eventpb.EventMessage, error) {
+	if w.Delivery.ContentType != "application/json" || w.Delivery.Type != "eventpb.EventMessage" {
+		return nil, errors.New("invalid header")
+	}
+
+	event := &eventpb.EventMessage{}
+
+	if err := protojson.Unmarshal(w.Delivery.Body, event); err != nil {
+		return nil, fmt.Errorf("unmarshal: %w", err)
+	}
+
+	return event, nil
 }
