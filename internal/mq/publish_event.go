@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
+	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq/amqpext"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
 	"github.com/rabbitmq/amqp091-go"
+	"github.com/samber/mo"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -28,25 +31,31 @@ func (mq *amqpMQ) PublishEvent(ctx context.Context, metadata models.Metadata, ev
 	defer span.End()
 
 	span.AddEvent("prepare AMQP [publish] channel")
-	mqChannel, err := mq.getPubChan()
+	mqConnection, err := mq.getSingletonPublishConnection()
 	if err != nil {
-		span.SetStatus(codes.Error, "get publish channel failed")
+		span.SetStatus(codes.Error, "get publish connection failed")
 		span.RecordError(err)
 
-		return fmt.Errorf("get publish channel: %w", err)
+		return fmt.Errorf("get publish connection: %w", err)
 	}
+
+	mqChannel, err := mqConnection.Channel()
+	if err != nil {
+		span.SetStatus(codes.Error, "get publish connection failed")
+		span.RecordError(err)
+
+		return fmt.Errorf("get publish connection: %w", err)
+	}
+	defer func(mqChannel *amqp091.Channel) {
+		err := mqChannel.Close()
+		if err != nil {
+			slog.Error("close channel failed", slogext.Error(err))
+		}
+	}(mqChannel)
 	span.AddEvent("prepared AMQP [publish] channel")
 
 	span.AddEvent("prepare AMQP exchange")
-	err = mqChannel.ExchangeDeclare(
-		"events_topic",
-		"topic",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
+	exchangeName, err := declareEventsTopic(mqChannel)
 	if err != nil {
 		span.SetStatus(codes.Error, "declare exchange failed")
 		span.RecordError(err)
@@ -66,7 +75,7 @@ func (mq *amqpMQ) PublishEvent(ctx context.Context, metadata models.Metadata, ev
 
 	err = mqChannel.PublishWithContext(
 		ctx,
-		"events_topic",
+		exchangeName,
 		key,
 		false,
 		false,
@@ -109,7 +118,7 @@ func (mq *amqpMQ) createPublishingMessage(ctx context.Context, metadata models.M
 		return "", amqp091.Publishing{}, fmt.Errorf("marshal event: %w", err)
 	}
 
-	return "event.v1." + string(eventType), amqp091.Publishing{
+	return getMessageKey(mo.Some(eventType)), amqp091.Publishing{
 		ContentType: "application/json",
 		MessageId:   metadata.GetEventID().String(),
 		Timestamp:   metadata.GetEmittedAt(),

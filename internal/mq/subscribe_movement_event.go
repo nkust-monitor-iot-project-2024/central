@@ -9,6 +9,7 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
 	"github.com/rabbitmq/amqp091-go"
+	"github.com/samber/mo"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -36,25 +37,28 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 	defer span.End()
 
 	span.AddEvent("prepare AMQP [subscribe] channel")
-	mqChannel, err := mq.getSubChan()
+	mqConnection, err := mq.getSingletonSubscribeConnection()
 	if err != nil {
 		span.SetStatus(codes.Error, "get subscribe channel failed")
 		span.RecordError(err)
 
 		return nil, fmt.Errorf("get subscribe channel: %w", err)
 	}
+
+	mqChannel, err := mqConnection.Channel()
+	if err != nil {
+		span.SetStatus(codes.Error, "get subscribe channel failed")
+		span.RecordError(err)
+
+		return nil, fmt.Errorf("get subscribe channel: %w", err)
+	}
+	defer func(mqChannel *amqp091.Channel) {
+		_ = mqChannel.Close()
+	}(mqChannel)
 	span.AddEvent("prepared AMQP [subscribe] channel")
 
 	span.AddEvent("prepare AMQP queue")
-	err = mqChannel.ExchangeDeclare(
-		"events_topic",
-		"topic",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
+	exchangeName, err := declareEventsTopic(mqChannel)
 	if err != nil {
 		span.SetStatus(codes.Error, "declare exchange failed")
 		span.RecordError(err)
@@ -62,45 +66,14 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 		return nil, fmt.Errorf("declare exchange: %w", err)
 	}
 
-	queue, err := mqChannel.QueueDeclare(
-		string(models.EventTypeMovement)+"_v1_events",
-		true,
-		false,
-		false,
-		false,
-		amqp091.Table{
-			"x-queue-type": "quorum",
-		},
-	)
+	queue, err := declareDurableQueueToTopic(mqChannel, exchangeName, mo.Some(models.EventTypeMovement))
 	if err != nil {
 		span.SetStatus(codes.Error, "declare queue failed")
 		span.RecordError(err)
 
 		return nil, fmt.Errorf("declare queue: %w", err)
 	}
-
-	err = mqChannel.QueueBind(
-		queue.Name,
-		"event.v1."+string(models.EventTypeMovement),
-		"events_topic",
-		false,
-		nil)
-	if err != nil {
-		span.SetStatus(codes.Error, "bind queue failed")
-		span.RecordError(err)
-
-		return nil, fmt.Errorf("bind queue: %w", err)
-	}
 	span.AddEvent("prepared the AMQP queue")
-
-	span.AddEvent("set QoS of the channel")
-	if err := mqChannel.Qos(64, 0, false); err != nil {
-		span.SetStatus(codes.Error, "set QoS failed")
-		span.RecordError(err)
-
-		return nil, fmt.Errorf("set QoS: %w", err)
-	}
-	span.AddEvent("done setting QoS of the channel")
 
 	span.AddEvent("prepare raw message channel from AMQP")
 	rawMessageCh, err := mqChannel.ConsumeWithContext(

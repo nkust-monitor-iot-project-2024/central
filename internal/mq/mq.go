@@ -25,7 +25,8 @@ var FxModule = fx.Module("amqp-mq", fx.Provide(func(lifecycle fx.Lifecycle, conf
 
 	lifecycle.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
-			return messageQueue.Close()
+			err := messageQueue.Close()
+			return err
 		},
 	})
 
@@ -51,12 +52,12 @@ type MessageQueue interface {
 type amqpMQ struct {
 	mqAddress string
 
-	// pub/sub separated channels as the AMQP library advised.
-	// you should always call getPubChan to get the channel singleton
+	// pub/sub separated connections as the AMQP library advised.
+	// you should always call getXXXConnection to get the channel singleton
 	// (it handles the connection opening and closing).
 
-	pubChan *amqp091.Channel
-	subChan *amqp091.Channel
+	pubConn *amqp091.Connection
+	subConn *amqp091.Connection
 
 	propagator propagation.TextMapPropagator
 	tracer     trace.Tracer
@@ -88,7 +89,7 @@ func ConnectAmqp(config utils.Config) (MessageQueue, error) {
 	}, nil
 }
 
-func (mq *amqpMQ) openMQConnection() (*amqp091.Channel, error) {
+func (mq *amqpMQ) openMQConnection() (*amqp091.Connection, error) {
 	if mq.mqAddress == "" {
 		return nil, errMQAddressNotSet
 	}
@@ -98,51 +99,46 @@ func (mq *amqpMQ) openMQConnection() (*amqp091.Channel, error) {
 		return nil, fmt.Errorf("connect to rabbitmq: %w", err)
 	}
 
-	ch, err := conn.Channel()
-	if err != nil {
-		return nil, fmt.Errorf("open channel: %w", err)
-	}
-
-	return ch, nil
+	return conn, nil
 }
 
-func (mq *amqpMQ) getPubChan() (*amqp091.Channel, error) {
-	if mq.pubChan == nil || mq.pubChan.IsClosed() {
-		ch, err := mq.openMQConnection()
+func (mq *amqpMQ) getSingletonPublishConnection() (*amqp091.Connection, error) {
+	if mq.pubConn == nil || mq.pubConn.IsClosed() {
+		conn, err := mq.openMQConnection()
 		if err != nil {
 			return nil, fmt.Errorf("open connection: %w", err)
 		}
 
-		mq.pubChan = ch
+		mq.pubConn = conn
 	}
 
-	return mq.pubChan, nil
+	return mq.pubConn, nil
 }
 
-func (mq *amqpMQ) getSubChan() (*amqp091.Channel, error) {
-	if mq.subChan == nil || mq.subChan.IsClosed() {
-		ch, err := mq.openMQConnection()
+func (mq *amqpMQ) getSingletonSubscribeConnection() (*amqp091.Connection, error) {
+	if mq.subConn == nil || mq.subConn.IsClosed() {
+		conn, err := mq.openMQConnection()
 		if err != nil {
 			return nil, fmt.Errorf("open connection: %w", err)
 		}
 
-		mq.subChan = ch
+		mq.subConn = conn
 	}
 
-	return mq.subChan, nil
+	return mq.subConn, nil
 }
 
 // Close closes the AMQP message queue.
 func (mq *amqpMQ) Close() (closeErr error) {
-	if mq.pubChan != nil {
-		if err := mq.pubChan.Close(); err != nil {
-			closeErr = errors.Join(closeErr, fmt.Errorf("close publish channel: %w", err))
+	if mq.pubConn != nil {
+		if err := mq.pubConn.Close(); err != nil {
+			closeErr = errors.Join(closeErr, fmt.Errorf("close publish connection: %w", err))
 		}
 	}
 
-	if mq.subChan != nil {
-		if err := mq.subChan.Close(); err != nil {
-			closeErr = errors.Join(closeErr, fmt.Errorf("close subscribe channel: %w", err))
+	if mq.subConn != nil {
+		if err := mq.subConn.Close(); err != nil {
+			closeErr = errors.Join(closeErr, fmt.Errorf("close subscribe connection: %w", err))
 		}
 	}
 
