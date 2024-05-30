@@ -106,8 +106,9 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (deliveryChan <-ch
 
 	go func() {
 		for rawMessage := range rawMessageCh {
-			// If the Acknowledger is nil, it means this message is not valid.
-			if rawMessage.Acknowledger == nil {
+			// If the Acknowledger is nil, it means this message is not valid;
+			// if this message is over the requeue limit, we should reject it.
+			if rawMessage.Acknowledger == nil || isDeliveryOverRequeueLimit(rawMessage) {
 				_ = rawMessage.Reject(false)
 				continue
 			}

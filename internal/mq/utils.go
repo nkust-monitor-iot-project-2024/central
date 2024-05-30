@@ -2,6 +2,7 @@ package mq
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/rabbitmq/amqp091-go"
@@ -80,4 +81,50 @@ func getMessageKey(eventType mo.Option[models.EventType]) string {
 	}
 
 	return "event.v1.*"
+}
+
+// getDeliveryCount gets the delivery count of the message.
+//
+// -1 means the message is invalid.
+func getDeliveryCount(delivery amqp091.Delivery) int64 {
+	// If the message is resent over 5 times, we throw it.
+	if v, ok := delivery.Headers["x-delivery-count"]; ok {
+		var deliveryCount int64
+
+		switch value := v.(type) {
+		case int:
+			deliveryCount = int64(value)
+		case int8:
+			deliveryCount = int64(value)
+		case int16:
+			deliveryCount = int64(value)
+		case int32:
+			deliveryCount = int64(value)
+		case int64:
+			deliveryCount = value
+		case float32:
+			deliveryCount = int64(value)
+		case float64:
+			deliveryCount = int64(value)
+		default:
+			slog.Warn("invalid x-delivery-count",
+				slog.String("type", fmt.Sprintf("%T", v)),
+				slog.String("value", fmt.Sprintf("%v", v)))
+
+			return -1
+		}
+
+		return deliveryCount
+	}
+
+	return 0
+}
+
+// isDeliveryOverRequeueLimit checks if the delivery should be throws.
+//
+// The delivery should be throws if the message is resent over three times,
+// or the message is invalid.
+func isDeliveryOverRequeueLimit(delivery amqp091.Delivery) bool {
+	count := getDeliveryCount(delivery)
+	return count >= 3 || count == -1
 }
