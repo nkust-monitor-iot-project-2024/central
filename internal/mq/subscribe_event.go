@@ -21,12 +21,25 @@ import (
 // EventSubscriber is the interface for services to subscribe to event messages.
 type EventSubscriber interface {
 	// SubscribeEvent subscribes to the event messages.
-	SubscribeEvent(ctx context.Context) (<-chan TraceableEventDelivery, error)
+	SubscribeEvent(ctx context.Context) (deliveryChan <-chan TraceableEventDelivery, cleanup func() error, err error)
 }
 
-type TraceableEventDelivery interface {
+// TraceableEventDeliveryMetadata is the interface for the event message delivery that includes
+// the metadata extraction and the span extractor.
+type TraceableEventDeliveryMetadata interface {
+	// Extract extracts the span for tracing from the event message.
 	Extract(ctx context.Context, propagator propagation.TextMapPropagator) context.Context
+
+	// Metadata returns the parsed event message metadata.
 	Metadata() (models.Metadata, error)
+}
+
+// TraceableEventDelivery is the interface for the event message delivery that includes
+// the metadata extraction, the span extractor, and the body extraction.
+type TraceableEventDelivery interface {
+	TraceableEventDeliveryMetadata
+
+	// Body returns the parsed event message body.
 	Body() (*eventpb.EventMessage, error)
 }
 
@@ -94,7 +107,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (deliveryChan <-chan Trace
 	})
 
 	eventsCh := make(chan TraceableEventDelivery, prefetchCount)
-	span.AddEvent("create a goroutine to map raw messages to amqpTraceableEventMessageDelivery")
+	span.AddEvent("create a goroutine to map raw messages to wrapped delivery")
 
 	go func() {
 		for rawMessage := range rawMessageCh {

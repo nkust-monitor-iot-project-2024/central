@@ -3,17 +3,20 @@ package mq
 import (
 	"context"
 	"fmt"
-	"log/slog"
-	"sync"
 
+	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
-	"github.com/rabbitmq/amqp091-go"
 	"github.com/samber/mo"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
+
+// MovementEventSubscriber is the interface for services to subscribe to movement event messages.
+type MovementEventSubscriber interface {
+	// SubscribeMovementEvent subscribes only the movement event messages.
+	SubscribeMovementEvent(ctx context.Context) (deliveryChan <-chan TraceableMovementEventDelivery, cleanup func() error, err error)
+}
 
 // MovementEventMessage is the message type for movement events.
 //
@@ -27,14 +30,22 @@ func (m *MovementEventMessage) GetMovementInfo() *eventpb.MovementInfo {
 	return m.MovementInfo
 }
 
-type MovementEventSubscriber interface {
-	// SubscribeMovementEvent subscribes only the movement event messages.
-	SubscribeMovementEvent(ctx context.Context) (<-chan TraceableTypedDelivery[models.Metadata, *MovementEventMessage], error)
+// TraceableMovementEventDelivery is the interface for the movement event message delivery that includes
+// the metadata extraction, the span extractor, and the body extraction.
+type TraceableMovementEventDelivery interface {
+	TraceableEventDeliveryMetadata
+
+	// Body returns the parsed movement event message body.
+	Body() (MovementEventMessage, error)
 }
 
-func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableTypedDelivery[models.Metadata, *MovementEventMessage], error) {
+func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (deliveryChan <-chan TraceableMovementEventDelivery, cleanup func() error, err error) {
+	const consumer = "subscribe-movement-event"
+
 	_, span := mq.tracer.Start(ctx, "mq/subscribe_movement_event", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
+
+	cs := utils.NewCleanupStack()
 
 	span.AddEvent("prepare AMQP [subscribe] channel")
 	mqConnection, err := mq.getSingletonSubscribeConnection()
@@ -42,20 +53,16 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 		span.SetStatus(codes.Error, "get subscribe channel failed")
 		span.RecordError(err)
 
-		return nil, fmt.Errorf("get subscribe channel: %w", err)
+		return nil, cs.Cleanup, fmt.Errorf("get subscribe channel: %w", err)
 	}
-
 	mqChannel, err := mqConnection.Channel()
 	if err != nil {
 		span.SetStatus(codes.Error, "get subscribe channel failed")
 		span.RecordError(err)
 
-		return nil, fmt.Errorf("get subscribe channel: %w", err)
+		return nil, cs.Cleanup, fmt.Errorf("get subscribe channel: %w", err)
 	}
-	defer func(mqChannel *amqp091.Channel) {
-		_ = mqChannel.Close()
-	}(mqChannel)
-	span.AddEvent("prepared AMQP [subscribe] channel")
+	cs.Push(mqChannel.Close)
 
 	span.AddEvent("prepare AMQP queue")
 	exchangeName, err := declareEventsTopic(mqChannel)
@@ -63,23 +70,21 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 		span.SetStatus(codes.Error, "declare exchange failed")
 		span.RecordError(err)
 
-		return nil, fmt.Errorf("declare exchange: %w", err)
+		return nil, cs.Cleanup, fmt.Errorf("declare exchange: %w", err)
 	}
 
-	queue, err := declareDurableQueueToTopic(mqChannel, exchangeName, mo.Some(models.EventTypeMovement))
+	queue, prefetchCount, err := declareDurableQueueToTopic(mqChannel, exchangeName, mo.Some(models.EventTypeMovement))
 	if err != nil {
 		span.SetStatus(codes.Error, "declare queue failed")
 		span.RecordError(err)
 
-		return nil, fmt.Errorf("declare queue: %w", err)
+		return nil, cs.Cleanup, fmt.Errorf("declare queue: %w", err)
 	}
-	span.AddEvent("prepared the AMQP queue")
 
 	span.AddEvent("prepare raw message channel from AMQP")
-	rawMessageCh, err := mqChannel.ConsumeWithContext(
-		ctx,
+	rawMessageCh, err := mqChannel.Consume(
 		queue.Name,
-		"",
+		consumer,
 		false,
 		false,
 		false,
@@ -90,79 +95,53 @@ func (mq *amqpMQ) SubscribeMovementEvent(ctx context.Context) (<-chan TraceableT
 		span.SetStatus(codes.Error, "consume failed")
 		span.RecordError(err)
 
-		return nil, fmt.Errorf("consume: %w", err)
+		return nil, cs.Cleanup, fmt.Errorf("consume: %w", err)
 	}
-	span.AddEvent("prepared raw message channel from AMQP")
+	cs.Push(func() error {
+		return mqChannel.Cancel(consumer, false)
+	})
 
-	eventsCh := make(chan TraceableTypedDelivery[models.Metadata, *MovementEventMessage], 64)
+	eventsCh := make(chan TraceableMovementEventDelivery, prefetchCount)
+	span.AddEvent("create a goroutine to map raw messages to wrapped delivery")
 
-	// handle raw messages
-	span.AddEvent("create a goroutine to handle raw messages")
 	go func() {
-		wg := sync.WaitGroup{}
-
-		for {
-			if err := ctx.Err(); err != nil {
-				slog.Debug("fuck, why context is cancelled??")
-				break
-			}
-			if mqChannel.IsClosed() {
-				// If the channel is closed, we may receive a lot of
-				// zero-value messages, which is not expected.
-				slog.Debug("fuck, why channel is cancelled??", slog.Bool("ctxCancelled", ctx.Err() != nil))
-				break
+		for rawMessage := range rawMessageCh {
+			// If the Acknowledger is nil, it means this message is not valid.
+			if rawMessage.Acknowledger == nil {
+				_ = rawMessage.Reject(false)
+				continue
 			}
 
-			rawMessage := <-rawMessageCh
-
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-
-				ctx, span := mq.tracer.Start(ctx, "mq/subscribe_movement_event/handle_raw_message", trace.WithAttributes(
-					attribute.String("message_id", rawMessage.MessageId),
-				), trace.WithSpanKind(trace.SpanKindInternal))
-				defer span.End()
-
-				span.AddEvent("unmarshal raw event message")
-				typedDelivery, err := mq.unmarshalRawEventMessage(ctx, rawMessage)
-				if err != nil {
-					span.SetStatus(codes.Error, "failed to unmarshal raw event message")
-					span.RecordError(err)
-
-					_ = rawMessage.Reject(false)
-					return
-				}
-				span.AddEvent("done unmarshalled raw event message")
-
-				span.AddEvent("process and send unmarshalled event message to eventsCh")
-
-				// check if the delivery is Movement instance
-				if event, ok := typedDelivery.Body.GetEvent().(*eventpb.EventMessage_MovementInfo); ok {
-					eventsCh <- TraceableTypedDelivery[models.Metadata, *MovementEventMessage]{
-						TypedDelivery: TypedDelivery[models.Metadata, *MovementEventMessage]{
-							Delivery: typedDelivery.TypedDelivery.Delivery,
-							Metadata: typedDelivery.TypedDelivery.Metadata,
-							Body:     &MovementEventMessage{MovementInfo: event.MovementInfo},
-						},
-						SpanContext: typedDelivery.SpanContext,
-					}
-				} else {
-					span.SetStatus(codes.Error, "failed to cast the event message to MovementInfo")
-
-					_ = rawMessage.Reject(false)
-					return
-				}
-
-				span.AddEvent("done processed and sent unmarshalled event message to eventsCh")
-				span.SetStatus(codes.Ok, "handle succeed")
-			}()
+			eventsCh <- &traceableMovementEventMessageDelivery{
+				TraceableEventDelivery: &amqpTraceableEventMessageDelivery{
+					Delivery: rawMessage,
+				},
+			}
 		}
 
-		wg.Wait()
 		close(eventsCh)
 	}()
 
-	span.SetStatus(codes.Ok, "created a subscriber channel of "+string(models.EventTypeMovement)+"_v1_events")
-	return eventsCh, nil
+	span.SetStatus(codes.Ok, "created a subscriber channel of "+queue.Name)
+	return eventsCh, cs.Cleanup, nil
+}
+
+// traceableMovementEventMessageDelivery is a wrapper around TraceableEventDelivery
+// that makes sure the event message is a movement event message.
+type traceableMovementEventMessageDelivery struct {
+	TraceableEventDelivery
+}
+
+// Body returns the parsed movement event message body.
+func (t *traceableMovementEventMessageDelivery) Body() (MovementEventMessage, error) {
+	body, err := t.TraceableEventDelivery.Body()
+	if err != nil {
+		return MovementEventMessage{}, err
+	}
+
+	if _, ok := body.GetEvent().(*eventpb.EventMessage_MovementInfo); !ok {
+		return MovementEventMessage{}, fmt.Errorf("failed to cast the event message to MovementInfo")
+	}
+
+	return MovementEventMessage{MovementInfo: body.GetMovementInfo()}, nil
 }
