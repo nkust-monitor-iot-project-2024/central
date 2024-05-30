@@ -157,7 +157,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (<-chan TraceableTypedDeli
 
 				ctx, span := mq.tracer.Start(ctx, "mq/subscribe_event/handle_raw_message", trace.WithAttributes(
 					attribute.String("message_id", rawMessage.MessageId),
-				), trace.WithSpanKind(trace.SpanKindConsumer))
+				), trace.WithSpanKind(trace.SpanKindInternal))
 				defer span.End()
 
 				span.AddEvent("unmarshal raw event message")
