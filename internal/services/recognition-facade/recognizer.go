@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/otelattrext"
+	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
@@ -16,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	rpccodes "google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -25,8 +27,9 @@ import (
 type Recognizer struct {
 	*Service
 
-	tracer trace.Tracer
-	logger *slog.Logger
+	tracer     trace.Tracer
+	logger     *slog.Logger
+	propagator propagation.TextMapPropagator
 }
 
 // NewRecognizer creates a new Recognizer.
@@ -35,12 +38,49 @@ func NewRecognizer(service *Service) (*Recognizer, error) {
 
 	tracer := otel.GetTracerProvider().Tracer(name)
 	logger := utils.NewLogger(name)
+	propagator := otel.GetTextMapPropagator()
 
 	return &Recognizer{
-		Service: service,
-		tracer:  tracer,
-		logger:  logger,
+		Service:    service,
+		tracer:     tracer,
+		logger:     logger,
+		propagator: propagator,
 	}, nil
+}
+
+// Run retrieves the movement events continuously and blocks until the service is stopped by ctx.
+func (r *Recognizer) Run(ctx context.Context) {
+	for {
+		if ctx.Err() != nil {
+			return
+		}
+
+		delivery, err := r.messageQueue.SubscribeMovementEvent(ctx)
+		if err != nil {
+			slog.Error("failed to subscribe movement event", slogext.Error(err))
+			return
+		}
+
+	deliveryloop:
+		for {
+			select {
+			case <-ctx.Done():
+			case <-delivery.ClosedChan:
+				break deliveryloop
+
+			case delivery, ok := <-delivery.DeliveryChan:
+				if !ok {
+					break deliveryloop
+				}
+
+				r.handleEvent(ctx, delivery)
+			}
+		}
+
+		if err := delivery.Cleanup(); err != nil {
+			slog.Error("failed to cleanup the subscription", slogext.Error(err))
+		}
+	}
 }
 
 // recognizeEntities calls the entityrecognitionpb.EntityRecognitionClient to recognize the entities in the image.
@@ -99,79 +139,78 @@ func (r *Recognizer) triggerInvadedEvent(ctx context.Context, parentMovementID u
 	return nil
 }
 
-// Run retrieves the movement events continuously and blocks until the service is stopped by ctx or something wrong.
-func (r *Recognizer) Run(ctx context.Context, movementEvents <-chan mq.TraceableTypedDelivery[models.Metadata, *mq.MovementEventMessage]) {
-	for movementEvent := range movementEvents {
-		func() {
-			ctx, span := r.tracer.Start(ctx, "recognition-facade/recognizer/run/handle_event",
-				trace.WithAttributes(
-					otelattrext.UUID("event_id", movementEvent.Metadata.GetEventID()),
-					attribute.String("device_id", movementEvent.Metadata.GetDeviceID())),
-				trace.WithLinks(trace.Link{SpanContext: movementEvent.SpanContext}),
-				trace.WithSpanKind(trace.SpanKindConsumer))
-			defer span.End()
+// handleEvent handles the movement event.
+func (r *Recognizer) handleEvent(ctx context.Context, movementDelivery mq.TraceableMovementEventDelivery) {
+	ctx = movementDelivery.Extract(ctx, r.propagator)
+	ctx, span := r.tracer.Start(ctx, "recognition-facade/recognizer/run/handle_event",
+		trace.WithSpanKind(trace.SpanKindConsumer))
+	defer span.End()
 
-			if v, ok := movementEvent.Headers["x-delivery-count"]; ok {
-				deliveryCount, ok := v.(int64)
-				if !ok {
-					span.SetStatus(codes.Error, fmt.Sprintf("invalid x-delivery-count (%T, %v)", v, v))
-					_ = movementEvent.Reject(false)
+	metadata, err := movementDelivery.Metadata()
+	if err != nil {
+		span.SetStatus(codes.Error, "failed to get metadata from movement event")
+		span.RecordError(err)
 
-					return
-				}
-
-				if deliveryCount >= 5 {
-					span.SetStatus(codes.Error, fmt.Sprintf("message failed more than 5 times (%d)", deliveryCount))
-					_ = movementEvent.Reject(false)
-
-					return
-				}
-			}
-
-			span.AddEvent("extracing movement information")
-			movementEventID := movementEvent.Metadata.GetEventID()
-
-			span.AddEvent("recognizing entities in the image")
-			movementInfo := movementEvent.Body.GetMovementInfo()
-			entity, err := r.recognizeEntities(ctx, movementInfo.GetPicture(), movementInfo.GetPictureMime())
-			if err != nil {
-				if code := status.Code(err); code == rpccodes.InvalidArgument {
-					span.SetStatus(codes.Error, "users provides a unprocessable image")
-					span.RecordError(err)
-
-					_ = movementEvent.Reject(false)
-					return
-				}
-
-				span.SetStatus(codes.Error, "failed to recognize entities in the image")
-				span.RecordError(err)
-
-				_ = movementEvent.Reject(true)
-				return
-			}
-
-			span.AddEvent("find human in entities")
-			invaders, found := findHumanInEntities(entity)
-			if !found {
-				span.AddEvent("no human found in entities")
-				span.SetStatus(codes.Ok, "recognized; no human found, no invasion.")
-				_ = movementEvent.Ack(false)
-
-				return
-			}
-
-			span.AddEvent("trigger invaded event")
-			if err := r.triggerInvadedEvent(ctx, movementEventID, invaders); err != nil {
-				span.SetStatus(codes.Error, "failed to trigger invaded event")
-				_ = movementEvent.Reject(true)
-
-				return
-			}
-
-			span.SetStatus(codes.Ok, "recognized and passed as invader_event successfully")
-			_ = movementEvent.Ack(false)
-		}()
+		_ = mq.Reject(movementDelivery, false)
+		return
 	}
+
+	span.SetAttributes(
+		otelattrext.UUID("event_id", metadata.GetEventID()),
+		attribute.String("device_id", metadata.GetDeviceID()),
+	)
+
+	body, err := movementDelivery.Body()
+	if err != nil {
+		span.SetStatus(codes.Error, "failed to get body from movement event")
+		span.RecordError(err)
+
+		_ = mq.Reject(movementDelivery, false)
+		return
+	}
+
+	span.AddEvent("extracing movement information")
+	movementEventID := metadata.GetEventID()
+
+	span.AddEvent("recognizing entities in the image")
+	movementInfo := body.GetMovementInfo()
+	entity, err := r.recognizeEntities(ctx, movementInfo.GetPicture(), movementInfo.GetPictureMime())
+	if err != nil {
+		if code := status.Code(err); code == rpccodes.InvalidArgument {
+			span.SetStatus(codes.Error, "users provides a unprocessable image")
+			span.RecordError(err)
+
+			_ = mq.Reject(movementDelivery, true)
+			return
+		}
+
+		span.SetStatus(codes.Error, "failed to recognize entities in the image")
+		span.RecordError(err)
+
+		_ = mq.Reject(movementDelivery, false)
+		return
+	}
+
+	span.AddEvent("find human in entities")
+	invaders, found := findHumanInEntities(entity)
+	if !found {
+		span.AddEvent("no human found in entities")
+		span.SetStatus(codes.Ok, "recognized; no human found, no invasion.")
+
+		_ = mq.Ack(movementDelivery)
+		return
+	}
+
+	span.AddEvent("trigger invaded event")
+	if err := r.triggerInvadedEvent(ctx, movementEventID, invaders); err != nil {
+		span.SetStatus(codes.Error, "failed to trigger invaded event")
+
+		_ = mq.Reject(movementDelivery, false)
+		return
+	}
+
+	span.SetStatus(codes.Ok, "recognized and passed as invader_event successfully")
+	_ = mq.Ack(movementDelivery)
 }
 
 // findHumanInEntities finds if there is a human in the entities.

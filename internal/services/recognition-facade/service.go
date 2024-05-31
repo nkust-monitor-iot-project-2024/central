@@ -78,15 +78,10 @@ func (s *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("initialize recognizer: %w", err)
 	}
 
-	movementEventChan, err := s.messageQueue.SubscribeMovementEvent(ctx)
-	if err != nil {
-		return fmt.Errorf("subscribe to movement event: %w", err)
-	}
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		recognizer.Run(ctx, movementEventChan)
+		recognizer.Run(ctx)
 	}()
 
 	wg.Wait()
