@@ -83,7 +83,7 @@ func ConnectAmqp(config utils.Config) (MessageQueue, error) {
 	}
 
 	return &amqpMQ{
-		mqAddress:  config.String("mq.address"),
+		mqAddress:  mqAddress,
 		propagator: propagator,
 		tracer:     tracer,
 		logger:     logger,
