@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -29,6 +30,10 @@ type Storer struct {
 	propagator propagation.TextMapPropagator
 	tracer     trace.Tracer
 	logger     *slog.Logger
+
+	handledEvents         metric.Int64Counter
+	handledMovementEvents metric.Int64Counter
+	handledInvadedEvents  metric.Int64Counter
 }
 
 // NewStorer creates a new Storer.
@@ -37,13 +42,38 @@ func NewStorer(service *Service) (*Storer, error) {
 
 	propagator := otel.GetTextMapPropagator()
 	tracer := otel.GetTracerProvider().Tracer(name)
+	meter := otel.GetMeterProvider().Meter(name)
 	logger := utils.NewLogger(name)
 
+	handledEvents, err := meter.Int64Counter("handled_events",
+		metric.WithDescription("The number of handled events"),
+		metric.WithUnit("{events}"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create handled_events counter: %w", err)
+	}
+
+	handledMovementEvents, err := meter.Int64Counter("handled_movement_events",
+		metric.WithDescription("The number of handled movement events"),
+		metric.WithUnit("{events}"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create handled_movement_events counter: %w", err)
+	}
+
+	handledInvadedEvents, err := meter.Int64Counter("handled_invaded_events",
+		metric.WithDescription("The number of handled invaded events"),
+		metric.WithUnit("{events}"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create handled_invaded_events counter: %w", err)
+	}
+
 	return &Storer{
-		Service:    service,
-		propagator: propagator,
-		tracer:     tracer,
-		logger:     logger,
+		Service:               service,
+		propagator:            propagator,
+		tracer:                tracer,
+		logger:                logger,
+		handledEvents:         handledEvents,
+		handledMovementEvents: handledMovementEvents,
+		handledInvadedEvents:  handledInvadedEvents,
 	}, nil
 }
 
@@ -129,6 +159,8 @@ func (s *Storer) storeSingleEvent(ctx context.Context, event *eventpb.EventMessa
 	ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/store_single_event", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
+	s.handledEvents.Add(ctx, 1)
+
 	s.logger.DebugContext(ctx, "storing single event", slog.Any("metadata", metadata))
 
 	status := false
@@ -200,6 +232,8 @@ func (s *Storer) storeMovementEvent(ctx context.Context, transaction *ent.Tx, mo
 	ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/store_movement_event", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
+	s.handledMovementEvents.Add(ctx, 1)
+
 	eventID := metadata.GetEventID()
 
 	span.AddEvent("create event with movement information in database")
@@ -246,6 +280,8 @@ func (s *Storer) storeMovementEvent(ctx context.Context, transaction *ent.Tx, mo
 func (s *Storer) storeInvadedEvent(ctx context.Context, transaction *ent.Tx, invadedInfo *eventpb.InvadedInfo, metadata models.Metadata) (status bool) {
 	ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/store_invaded_event", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
+
+	s.handledInvadedEvents.Add(ctx, 1)
 
 	span.AddEvent("create event with invaded information in database")
 	eventModelBuilder := transaction.Event.Create().

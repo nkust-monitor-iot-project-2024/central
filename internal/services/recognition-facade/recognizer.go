@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	rpccodes "google.golang.org/grpc/codes"
@@ -30,6 +31,9 @@ type Recognizer struct {
 	tracer     trace.Tracer
 	logger     *slog.Logger
 	propagator propagation.TextMapPropagator
+
+	handledMovementEvents  metric.Int64Counter
+	triggeredInvadedEvents metric.Int64Counter
 }
 
 // NewRecognizer creates a new Recognizer.
@@ -37,14 +41,31 @@ func NewRecognizer(service *Service) (*Recognizer, error) {
 	const name = "services/recognition/receiver"
 
 	tracer := otel.GetTracerProvider().Tracer(name)
+	meter := otel.GetMeterProvider().Meter(name)
 	logger := utils.NewLogger(name)
 	propagator := otel.GetTextMapPropagator()
 
+	handledMovementEvents, err := meter.Int64Counter("handled_movement_events",
+		metric.WithDescription("The number of handled events"),
+		metric.WithUnit("{events}"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create handled_movement_events counter: %w", err)
+	}
+
+	triggeredInvadedEvents, err := meter.Int64Counter("triggered_invaded_events",
+		metric.WithDescription("The number of pushed triggered events"),
+		metric.WithUnit("{events}"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create triggered_invaded_events counter: %w", err)
+	}
+
 	return &Recognizer{
-		Service:    service,
-		tracer:     tracer,
-		logger:     logger,
-		propagator: propagator,
+		Service:                service,
+		tracer:                 tracer,
+		logger:                 logger,
+		propagator:             propagator,
+		handledMovementEvents:  handledMovementEvents,
+		triggeredInvadedEvents: triggeredInvadedEvents,
 	}, nil
 }
 
@@ -110,6 +131,8 @@ func (r *Recognizer) triggerInvadedEvent(ctx context.Context, parentMovementID u
 	ctx, span := r.tracer.Start(ctx, "recognition-facade/recognizer/trigger_invaded_event", trace.WithSpanKind(trace.SpanKindProducer))
 	defer span.End()
 
+	r.triggeredInvadedEvents.Add(ctx, 1)
+
 	span.AddEvent("create invaded event")
 	metadata := models.Metadata{
 		EventID:   uuid.Must(uuid.NewV7()),
@@ -168,6 +191,8 @@ func (r *Recognizer) handleEvent(ctx context.Context, movementDelivery mq.Tracea
 		_ = mq.Reject(movementDelivery, false)
 		return
 	}
+
+	r.handledMovementEvents.Add(ctx, 1)
 
 	span.AddEvent("extracing movement information")
 	movementEventID := metadata.GetEventID()
