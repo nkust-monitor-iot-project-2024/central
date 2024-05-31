@@ -78,7 +78,7 @@ func (r *Recognizer) Run(ctx context.Context) {
 		}
 
 		if err := delivery.Cleanup(); err != nil {
-			slog.Error("failed to cleanup the subscription", slogext.Error(err))
+			slog.Debug("failed to cleanup the subscription", slogext.Error(err))
 		}
 	}
 }
