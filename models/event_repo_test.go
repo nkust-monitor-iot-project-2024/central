@@ -36,6 +36,9 @@ func (m mockEvent) GetEmittedAt() time.Time {
 func (m mockEvent) GetType() models.EventType {
 	return models.EventTypeMovement
 }
+func (m mockEvent) GetParentEventID() (uuid.UUID, bool) {
+	return uuid.Nil, false
+}
 
 func TestGeneratePaginationInfo(t *testing.T) {
 	t.Parallel()
