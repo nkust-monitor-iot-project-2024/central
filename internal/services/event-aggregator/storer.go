@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/otelattrext"
+	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
@@ -16,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -24,22 +26,98 @@ import (
 type Storer struct {
 	*Service
 
-	tracer trace.Tracer
-	logger *slog.Logger
+	propagator propagation.TextMapPropagator
+	tracer     trace.Tracer
+	logger     *slog.Logger
 }
 
 // NewStorer creates a new Storer.
 func NewStorer(service *Service) (*Storer, error) {
 	const name = "event-aggregator/storer"
 
+	propagator := otel.GetTextMapPropagator()
 	tracer := otel.GetTracerProvider().Tracer(name)
 	logger := utils.NewLogger(name)
 
 	return &Storer{
-		Service: service,
-		tracer:  tracer,
-		logger:  logger,
+		Service:    service,
+		propagator: propagator,
+		tracer:     tracer,
+		logger:     logger,
 	}, nil
+}
+
+// Run retrieves the events continuously from the channel until something wrong or the context is canceled.
+func (s *Storer) Run(ctx context.Context) {
+	for {
+		if ctx.Err() != nil {
+			return
+		}
+
+		delivery, err := s.messageQueue.SubscribeEvent(ctx)
+		if err != nil {
+			slog.Error("failed to subscribe event", slogext.Error(err))
+			return
+		}
+
+	deliveryloop:
+		for {
+			select {
+			case <-ctx.Done():
+			case <-delivery.ClosedChan:
+				break deliveryloop
+
+			case delivery, ok := <-delivery.DeliveryChan:
+				if !ok {
+					break deliveryloop
+				}
+
+				s.handleEvent(ctx, delivery)
+			}
+		}
+
+		if err := delivery.Cleanup(); err != nil {
+			slog.Error("failed to cleanup the subscription", slogext.Error(err))
+		}
+	}
+}
+
+// handleEvent handles the event and calls the storeSingleEvent function to store the event in the database.
+func (s *Storer) handleEvent(ctx context.Context, delivery mq.TraceableEventDelivery) {
+	ctx = delivery.Extract(ctx, s.propagator)
+	ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/handle_event")
+	defer span.End()
+
+	metadata, err := delivery.Metadata()
+	if err != nil {
+		span.SetStatus(codes.Error, "failed to get metadata from event")
+		span.RecordError(err)
+
+		_ = mq.Reject(delivery, false)
+		return
+	}
+	span.SetAttributes(
+		otelattrext.UUID("event_id", metadata.GetEventID()),
+		attribute.String("device_id", metadata.GetDeviceID()),
+	)
+
+	body, err := delivery.Body()
+	if err != nil {
+		span.SetStatus(codes.Error, "failed to get body from event")
+		span.RecordError(err)
+
+		_ = mq.Reject(delivery, false)
+		return
+	}
+
+	span.AddEvent("storing events")
+	if ok := s.storeSingleEvent(ctx, body, metadata); !ok {
+		span.SetStatus(codes.Error, "failed to store event")
+		_ = mq.Reject(delivery, true)
+	} else {
+		span.SetStatus(codes.Ok, "event stored successfully")
+		_ = mq.Ack(delivery)
+	}
 }
 
 // storeSingleEvent stores a single event in the database.
@@ -222,44 +300,4 @@ func (s *Storer) storeInvadedEvent(ctx context.Context, transaction *ent.Tx, inv
 	span.SetStatus(codes.Ok, "created invaded information in database")
 
 	return true
-}
-
-// Run retrieves the events continuously from the channel until something wrong or the context is canceled.
-func (s *Storer) Run(ctx context.Context, events <-chan mq.TraceableTypedDelivery[models.Metadata, *eventpb.EventMessage]) {
-	for event := range events {
-		func() {
-			ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/run/handle_event",
-				trace.WithAttributes(
-					otelattrext.UUID("event_id", event.Metadata.GetEventID()),
-					attribute.String("device_id", event.Metadata.GetDeviceID())),
-				trace.WithLinks(trace.Link{SpanContext: event.SpanContext}),
-				trace.WithSpanKind(trace.SpanKindConsumer))
-			defer span.End()
-
-			if v, ok := event.Headers["x-delivery-count"]; ok {
-				deliveryCount, ok := v.(int64)
-				if !ok {
-					span.SetStatus(codes.Error, fmt.Sprintf("invalid x-delivery-count (%T, %v)", v, v))
-					_ = event.Reject(false)
-
-					return
-				}
-
-				if deliveryCount >= 5 {
-					span.SetStatus(codes.Error, fmt.Sprintf("message failed more than 5 times (%d)", deliveryCount))
-					_ = event.Reject(false)
-
-					return
-				}
-			}
-
-			if ok := s.storeSingleEvent(ctx, event.Body, event.Metadata); !ok {
-				span.SetStatus(codes.Error, "failed to store event")
-				_ = event.Reject(true)
-			} else {
-				span.SetStatus(codes.Ok, "event stored successfully")
-				_ = event.Ack(false)
-			}
-		}()
-	}
 }
