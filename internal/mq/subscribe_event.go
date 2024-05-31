@@ -21,7 +21,7 @@ import (
 // EventSubscriber is the interface for services to subscribe to event messages.
 type EventSubscriber interface {
 	// SubscribeEvent subscribes to the event messages.
-	SubscribeEvent(ctx context.Context) (deliveryChan <-chan TraceableEventDelivery, cleanup func() error, err error)
+	SubscribeEvent(ctx context.Context) (SubscribeResponse[TraceableEventDelivery], error)
 }
 
 // TraceableEventDeliveryMetadata is the interface for the event message delivery that includes
@@ -44,13 +44,19 @@ type TraceableEventDelivery interface {
 }
 
 // SubscribeEvent subscribes to the event messages.
-func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (deliveryChan <-chan TraceableEventDelivery, cleanup func() error, err error) {
+func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (SubscribeResponse[TraceableEventDelivery], error) {
 	const consumer = "subscribe-event"
 
 	_, span := mq.tracer.Start(ctx, "mq/subscribe_event", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
 	cs := utils.NewCleanupStack()
+	closedChan := make(chan error, 2)
+	response := SubscribeResponse[TraceableEventDelivery]{
+		DeliveryChan: nil,
+		Cleanup:      cs.Cleanup,
+		ClosedChan:   closedChan,
+	}
 
 	span.AddEvent("prepare AMQP [subscribe] channel")
 	mqConnection, err := mq.getSingletonSubscribeConnection()
@@ -58,15 +64,24 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (deliveryChan <-chan Trace
 		span.SetStatus(codes.Error, "get subscribe channel failed")
 		span.RecordError(err)
 
-		return nil, cs.Cleanup, fmt.Errorf("get subscribe channel: %w", err)
+		return response, fmt.Errorf("get subscribe channel: %w", err)
 	}
+	go func() {
+		err := <-mqConnection.NotifyClose(make(chan *amqp091.Error, 1))
+		closedChan <- err
+	}()
+
 	mqChannel, err := mqConnection.Channel()
 	if err != nil {
 		span.SetStatus(codes.Error, "get subscribe channel failed")
 		span.RecordError(err)
 
-		return nil, cs.Cleanup, fmt.Errorf("get subscribe channel: %w", err)
+		return response, fmt.Errorf("get subscribe channel: %w", err)
 	}
+	go func() {
+		err := <-mqConnection.NotifyClose(make(chan *amqp091.Error, 1))
+		closedChan <- err
+	}()
 	cs.Push(mqChannel.Close)
 
 	span.AddEvent("prepare AMQP queue")
@@ -75,7 +90,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (deliveryChan <-chan Trace
 		span.SetStatus(codes.Error, "declare exchange failed")
 		span.RecordError(err)
 
-		return nil, cs.Cleanup, fmt.Errorf("declare exchange: %w", err)
+		return response, fmt.Errorf("declare exchange: %w", err)
 	}
 
 	queue, prefetchCount, err := declareDurableQueueToTopic(mqChannel, exchangeName, mo.None[models.EventType]())
@@ -83,7 +98,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (deliveryChan <-chan Trace
 		span.SetStatus(codes.Error, "declare queue failed")
 		span.RecordError(err)
 
-		return nil, cs.Cleanup, fmt.Errorf("declare queue: %w", err)
+		return response, fmt.Errorf("declare queue: %w", err)
 	}
 
 	span.AddEvent("prepare raw message channel from AMQP")
@@ -100,7 +115,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (deliveryChan <-chan Trace
 		span.SetStatus(codes.Error, "consume failed")
 		span.RecordError(err)
 
-		return nil, cs.Cleanup, fmt.Errorf("consume: %w", err)
+		return response, fmt.Errorf("consume: %w", err)
 	}
 	cs.Push(func() error {
 		return mqChannel.Cancel(consumer, false)
@@ -124,8 +139,10 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (deliveryChan <-chan Trace
 		close(eventsCh)
 	}()
 
+	response.DeliveryChan = eventsCh
 	span.SetStatus(codes.Ok, "created a subscriber channel of "+queue.Name)
-	return eventsCh, cs.Cleanup, nil
+
+	return response, nil
 }
 
 // amqpTraceableEventMessageDelivery is a wrapper around amqp091.Delivery that includes a function

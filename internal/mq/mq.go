@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/rabbitmq/amqp091-go"
@@ -129,16 +130,18 @@ func (mq *amqpMQ) getSingletonSubscribeConnection() (*amqp091.Connection, error)
 }
 
 // Close closes the AMQP message queue.
+//
+// It closes the publishing and subscribing connections for each in 1 second.
 func (mq *amqpMQ) Close() (closeErr error) {
 	if mq.pubConn != nil {
-		if err := mq.pubConn.Close(); err != nil {
-			closeErr = errors.Join(closeErr, fmt.Errorf("close publish connection: %w", err))
+		if err := mq.pubConn.CloseDeadline(time.Now().Add(1 * time.Second)); err != nil {
+			closeErr = errors.Join(closeErr, fmt.Errorf("closech publish connection: %w", err))
 		}
 	}
 
 	if mq.subConn != nil {
-		if err := mq.subConn.Close(); err != nil {
-			closeErr = errors.Join(closeErr, fmt.Errorf("close subscribe connection: %w", err))
+		if err := mq.subConn.CloseDeadline(time.Now().Add(1 * time.Second)); err != nil {
+			closeErr = errors.Join(closeErr, fmt.Errorf("closech subscribe connection: %w", err))
 		}
 	}
 

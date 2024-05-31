@@ -2,6 +2,20 @@ package mq
 
 import "errors"
 
+type SubscribeResponse[T any] struct {
+	// DeliveryChan is the channel for the delivery.
+	DeliveryChan <-chan T
+
+	// Cleanup is the cleanup function that can used to clean up the subscription.
+	//
+	// If the error happened, you should also call this Cleanup function.
+	Cleanup func() error
+
+	// ClosedChan is the channel that will send the error (or nil if the channel
+	// is closed normally) if the subscription is closed.
+	ClosedChan <-chan error
+}
+
 // ErrNotRejectable is the error indicating the delivery is not rejectable.
 var ErrNotRejectable = errors.New("the delivery is not rejectable")
 
