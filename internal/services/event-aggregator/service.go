@@ -73,15 +73,10 @@ func (s *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("initialize storer: %w", err)
 	}
 
-	eventChan, err := s.messageQueue.SubscribeEvent(ctx)
-	if err != nil {
-		return fmt.Errorf("subscribe to event: %w", err)
-	}
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		storer.Run(ctx, eventChan)
+		storer.Run(ctx)
 	}()
 
 	wg.Wait()
