@@ -50,6 +50,11 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 
 	query := r.client.Event.Query()
 	query = query.Order(ent.Desc(event.FieldID))
+
+	if eventType, ok := filter.EventType.Get(); ok {
+		query = query.Where(event.TypeEQ(event.Type(eventType)))
+	}
+
 	previousElementCheckQuery := query.Clone()
 
 	var limit int
