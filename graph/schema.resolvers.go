@@ -7,6 +7,7 @@ package graph
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent"
@@ -145,6 +146,13 @@ func (r *queryResolver) Events(ctx context.Context, first int, after *string, ev
 		EventType: convertedEventType,
 	})
 	if err != nil {
+		if strings.Contains(err.Error(), "decode cursor:") {
+			span.SetStatus(codes.Error, "invalid cursor")
+			span.RecordError(err)
+
+			return nil, NewTraceableErrorWithCode(ctx, GraphqlErrorCodeInvalidCursor, fmt.Errorf("invalid cursor: %w", err))
+		}
+
 		span.SetStatus(codes.Error, "list events error")
 		span.RecordError(err)
 

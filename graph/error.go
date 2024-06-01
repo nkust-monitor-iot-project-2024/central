@@ -24,6 +24,7 @@ func NewGraphqlErrorCode(code, desc string) GraphqlErrorCode {
 
 var (
 	GraphqlErrorCodeInternalError = NewGraphqlErrorCode("INTERNAL_ERROR", "Internal error")
+	GraphqlErrorCodeInvalidCursor = NewGraphqlErrorCode("INVALID_CURSOR", "Invalid cursor")
 )
 
 func NewTraceableErrorWithCode(ctx context.Context, code GraphqlErrorCode, err error) error {
