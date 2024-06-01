@@ -1,13 +1,33 @@
 version: '3'
 
 tasks:
+  gqlgen:
+    cmds:
+      - go run github.com/99designs/gqlgen generate
+    sources:
+        - graph/schema.graphqls
+    generates:
+        - graph/generated.go
+        - graph/resolver.go
+        - graph/model/**.go
+
   protoc:
     cmds:
       - bash scripts/protoc.sh
+    sources:
+      - scripts/protoc.sh
+      - protos/**/*.proto
+    generates:
+      - protos/**/*.pb.go
 
-  go-generate:
+  generate-models:
     cmds:
-      - go generate ./...
+      - go generate ./ent
+    sources:
+        - ent/schema/*.go
+    generates:
+        - ent/**.go
+        - exclude: ent/schema/*.go
 
   go-mod-tidy:
     internal: true
@@ -15,17 +35,18 @@ tasks:
       - go mod tidy
 
   generate:
-    deps: [protoc, go-generate, go-mod-tidy]
+    deps: [protoc, generate-models, go-mod-tidy, gqlgen]
 
   service-event-aggregator:
-    deps: [protoc]
+    deps: [protoc, gqlgen]
     cmds:
       - go build -o out/service-event-aggregator ./cmd/event-aggregator
 
   service-recognition-facade:
-    deps: [protoc]
+    deps: [protoc, gqlgen]
     cmds:
       - go build -o out/service-recognition-facade ./cmd/recognition-facade
 
   service-all:
+    run: once
     deps: [service-event-aggregator, service-recognition-facade]
