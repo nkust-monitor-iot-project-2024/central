@@ -13,10 +13,20 @@ type Query {
 
   # Get the list of events
   events(
-    # The number of events to return
-    first: Int! = 10
-    # The cursor to start the query from
+    # -- Forward Pagination strategy [default] --
+
+    # first: The number of events to return after the first
+    first: Int
+    # after: The cursor to the next page
+    before: String
+
+    # -- Backward Pagination strategy --
+
+    # last: The number of events to return before the last
+    last: Int
+    # before: The cursor to the previous page
     after: String
+
     # The event type to filter
     eventType: EventType
   ): EventConnection!
@@ -44,6 +54,9 @@ type PageInfo {
 
   # The cursor of the last event
   endCursor: String
+
+  # Whether there is a previous page
+  hasPreviousPage: Boolean!
 
   # Whether there is a next page
   hasNextPage: Boolean!

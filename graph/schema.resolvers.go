@@ -13,7 +13,6 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/ent"
 	gqlModel "github.com/nkust-monitor-iot-project-2024/central/graph/model"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
-	"github.com/samber/lo"
 	"github.com/samber/mo"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -99,22 +98,17 @@ func (r *queryResolver) Event(ctx context.Context, id uuid.UUID) (*gqlModel.Even
 }
 
 // Events is the resolver for the events field.
-func (r *queryResolver) Events(ctx context.Context, first int, after *string, eventType *gqlModel.EventType) (*gqlModel.EventConnection, error) {
+func (r *queryResolver) Events(ctx context.Context, first *int, before *string, last *int, after *string, eventType *gqlModel.EventType) (*gqlModel.EventConnection, error) {
 	ctx, span := r.tracer.Start(ctx, "gql/query_resolver/events")
 	defer span.End()
 
-	convertAttributes := []attribute.KeyValue{
-		attribute.Int("first", first),
-	}
-	if after != nil {
-		convertAttributes = append(convertAttributes, attribute.String("after", *after))
-	}
+	pagination := GqlParameterToPagination(first, before, last, after)
+	queryAttributes := PaginationToTraceAttributes(pagination)
 	if eventType != nil {
-		convertAttributes = append(convertAttributes, attribute.String("event_type", string(*eventType)))
+		queryAttributes = append(queryAttributes, attribute.String("event_type", eventType.String()))
 	}
 
-	span.AddEvent("converting graphql request to internal representation",
-		trace.WithAttributes(convertAttributes...))
+	span.AddEvent("query events list", trace.WithAttributes(queryAttributes...))
 	convertedEventType := mo.None[models.EventType]()
 	if eventType != nil {
 		eventTypeModelRepr, err := EventTypeFromGql(*eventType)
@@ -129,21 +123,10 @@ func (r *queryResolver) Events(ctx context.Context, first int, after *string, ev
 
 		convertedEventType = mo.Some(eventTypeModelRepr)
 	}
-	afterCursor := lo.FromPtrOr(after, "")
 
-	queryAttributes := []attribute.KeyValue{
-		attribute.Int("first", first),
-		attribute.String("after", afterCursor),
-	}
-	if eventType != nil {
-		queryAttributes = append(queryAttributes, attribute.String("event_type", string(*eventType)))
-	}
-
-	span.AddEvent("query events list", trace.WithAttributes(queryAttributes...))
 	eventsListResponse, err := r.eventRepo.ListEvents(ctx, models.EventListFilter{
-		Limit:     first,
-		Cursor:    afterCursor,
-		EventType: convertedEventType,
+		Pagination: mo.Some(pagination),
+		EventType:  convertedEventType,
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "decode cursor:") {
