@@ -46,29 +46,52 @@ func (r *eventRepositoryEnt) GetEvent(ctx context.Context, id uuid.UUID) (Event,
 }
 
 func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFilter) (*EventListResponse, error) {
-	// construct query
+	paginationFilter := filter.Pagination.OrElse(ForwardPagination{})
+
 	query := r.client.Event.Query()
 	query = query.Order(ent.Desc(event.FieldID))
+	previousElementCheckQuery := query.Clone()
 
-	cursor, err := filter.GetCursorUUID()
-	if err != nil {
-		if !errors.Is(err, ErrNoCursor) {
-			return nil, fmt.Errorf("get cursor uuid: %w", err)
+	var limit int
+
+	switch pagination := paginationFilter.(type) {
+	case ForwardPagination:
+		cursor, err := pagination.GetAfterUUID()
+		switch {
+		case err == nil:
+			query = query.Where(event.IDGT(cursor))
+			previousElementCheckQuery = previousElementCheckQuery.Where(event.IDLT(cursor))
+		case errors.Is(err, ErrNoCursor): // no cursor, do nothing
+		default:
+			return nil, fmt.Errorf("get after uuid: %w", err)
 		}
-	} else {
-		query = query.Where(event.IDLT(cursor))
-	}
 
-	if filterEventType, ok := filter.GetEventType().Get(); ok {
-		query = query.Where(event.TypeEQ(event.Type(filterEventType)))
-	}
+		query = query.Limit(pagination.GetFirst() + 1 /* hasNextPage */)
+		limit = pagination.GetFirst()
+	case BackwardPagination:
+		cursor, err := pagination.GetBeforeUUID()
 
-	query = query.Limit(filter.GetLimit() + 1 /* hasNextPage */)
+		switch {
+		case err == nil:
+			query = query.Where(event.IDLT(cursor))
+			previousElementCheckQuery = previousElementCheckQuery.Where(event.IDGT(cursor))
+		case errors.Is(err, ErrNoCursor): // no cursor, do nothing
+		default:
+			return nil, fmt.Errorf("get before uuid: %w", err)
+		}
+
+		query = query.Limit(pagination.GetLast() + 1 /* hasNextPage */)
+		limit = pagination.GetLast()
+	}
 
 	// get response
 	eventsDao, err := query.All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list events: %w", err)
+	}
+	hasPreviousPage, err := previousElementCheckQuery.Exist(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("check previous element: %w", err)
 	}
 
 	events := make([]Event, 0, len(eventsDao))
@@ -81,20 +104,10 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 		events = append(events, eventModel)
 	}
 
-	if len(events) == 0 {
-		return &EventListResponse{
-			Events: []Event{},
-			Pagination: PaginationInfo{
-				HasNextPage: false,
-				StartCursor: "",
-				EndCursor:   "",
-			},
-		}, nil
-	}
-
+	paginatedEvents, paginationInfo := GeneratePaginationInfo(events, limit, hasPreviousPage)
 	return &EventListResponse{
-		Events:     events[:len(events)-1], // we ask limit+1, so we need to remove the last one
-		Pagination: GeneratePaginationInfo(events, filter.GetLimit()),
+		Events:     paginatedEvents,
+		Pagination: paginationInfo,
 	}, nil
 }
 
