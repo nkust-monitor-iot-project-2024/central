@@ -2,6 +2,7 @@ package graph
 
 import (
 	"github.com/nkust-monitor-iot-project-2024/central/models"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/fx"
 )
@@ -22,7 +23,9 @@ var ResolverFxModule = fx.Module("graphql-resolver-module",
 	fx.Provide(NewResolver))
 
 // NewResolver creates a new Resolver with the given dependencies.
-func NewResolver(eventRepo models.EventRepository, tracer trace.Tracer) *Resolver {
+func NewResolver(eventRepo models.EntEventRepository) *Resolver {
+	tracer := otel.GetTracerProvider().Tracer("graphql-resolver")
+
 	return &Resolver{
 		eventRepo: eventRepo,
 		tracer:    tracer,

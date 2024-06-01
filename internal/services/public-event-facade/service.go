@@ -9,21 +9,27 @@
 package public_event_facade
 
 import (
+	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/nkust-monitor-iot-project-2024/central/graph"
+	"github.com/nkust-monitor-iot-project-2024/central/internal/services"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	gqlgenopentelemetry "github.com/zhevron/gqlgen-opentelemetry"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/fx"
 )
 
-var FxModule = fx.Module("public-event-facade", fx.Provide(New))
+var FxModule = fx.Module("public-event-facade",
+	graph.ResolverFxModule,
+	fx.Provide(New),
+	fx.Provide(fx.Annotate(New, fx.As(new(services.Service)))),
+	fx.Invoke(services.BootstrapFxService),
+)
 
 // Service is the core of the service, "public-event-facade".
 type Service struct {
@@ -42,11 +48,14 @@ func New(config utils.Config, resolver *graph.Resolver) *Service {
 }
 
 // Run runs the service.
-func (s *Service) Run() error {
+func (s *Service) Run(_ context.Context) error {
 	port := s.config.Int("service.publiceventfacade.port")
 	if port == 0 {
 		port = 8080
 	}
+
+	certFile := s.config.String("service.publiceventfacade.tls.cert_file")
+	keyFile := s.config.String("service.publiceventfacade.tls.key_file")
 
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
 	srv.Use(gqlgenopentelemetry.Tracer{
@@ -62,7 +71,11 @@ func (s *Service) Run() error {
 		slog.String("address", "http://localhost"+listenOn),
 		slog.String("listenOn", listenOn))
 
-	log.Fatal(http.ListenAndServe(listenOn, nil))
+	if certFile != "" && keyFile != "" {
+		slog.Info("start listening with TLS", slog.String("certFile", certFile), slog.String("keyFile", keyFile))
+		return http.ListenAndServeTLS(listenOn, certFile, keyFile, nil)
+	}
 
-	return nil
+	slog.Info("start listening without TLS", slog.String("listenOn", listenOn))
+	return http.ListenAndServe(listenOn, nil)
 }
