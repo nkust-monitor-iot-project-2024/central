@@ -100,7 +100,7 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 		}
 
 		return previousElementCheckQuery.
-			Where(event.IDLT(eventsDao[0].ID)).
+			Where(event.IDGT(eventsDao[0].ID)).
 			Exist(ctx)
 	}()
 	if err != nil {
