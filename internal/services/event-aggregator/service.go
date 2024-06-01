@@ -3,13 +3,11 @@ package event_aggregator
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"log/slog"
 	"sync"
 
-	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
+	"github.com/nkust-monitor-iot-project-2024/central/internal/services"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"go.uber.org/fx"
 )
@@ -19,36 +17,8 @@ var FxModule = fx.Module(
 	"event-aggregator",
 	models.EventRepositoryEntFx,
 	mq.FxModule,
-	fx.Provide(NewStorer),
-	fx.Provide(New),
-	fx.Invoke(func(lifecycle fx.Lifecycle, shutdowner fx.Shutdowner, s *Service) error {
-		ctx, cancel := context.WithCancel(context.Background())
-
-		lifecycle.Append(fx.Hook{
-			OnStart: func(_ context.Context) error {
-				go func() {
-					defer cancel()
-
-					if err := s.Run(ctx); err != nil {
-						if !errors.Is(err, context.Canceled) {
-							slog.Error("event service stopped with errors", slogext.Error(err))
-							_ = shutdowner.Shutdown(fx.ExitCode(1))
-						}
-					}
-
-					slog.InfoContext(ctx, "event service stopped")
-					_ = shutdowner.Shutdown(fx.ExitCode(0))
-				}()
-				return nil
-			},
-			OnStop: func(_ context.Context) error {
-				cancel()
-				return nil
-			},
-		})
-
-		return nil
-	}),
+	fx.Provide(fx.Annotate(New, fx.As(new(services.Service)))),
+	fx.Invoke(services.BootstrapFxService),
 )
 
 // Service is the service that aggregates the events.
