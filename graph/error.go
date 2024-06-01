@@ -27,7 +27,9 @@ var (
 )
 
 func NewTraceableErrorWithCode(ctx context.Context, code GraphqlErrorCode, err error) error {
-	spanID := trace.SpanFromContext(ctx).SpanContext().SpanID().String()
+	spanContext := trace.SpanFromContext(ctx).SpanContext()
+	traceID := spanContext.TraceID().String()
+	spanID := spanContext.SpanID().String()
 
 	return &gqlerror.Error{
 		Err:     err,
@@ -35,7 +37,7 @@ func NewTraceableErrorWithCode(ctx context.Context, code GraphqlErrorCode, err e
 		Path:    graphql.GetPath(ctx),
 		Extensions: map[string]any{
 			"code":      code.Code,
-			"requestID": spanID,
+			"requestID": fmt.Sprintf("%s::%s", traceID, spanID),
 		},
 	}
 }
