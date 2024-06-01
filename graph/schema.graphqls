@@ -71,7 +71,7 @@ type Event {
   type: EventType!
 
   # The details of the event
-  details: EventDetails!
+  details: EventDetails
 }
 
 enum EventType {
