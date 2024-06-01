@@ -64,8 +64,7 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 		cursor, err := pagination.GetAfterUUID()
 		switch {
 		case err == nil:
-			query = query.Where(event.IDGT(cursor))
-			previousElementCheckQuery = previousElementCheckQuery.Where(event.IDLT(cursor))
+			query = query.Where(event.IDLT(cursor))
 		case errors.Is(err, ErrNoCursor): // no cursor, do nothing
 		default:
 			return nil, fmt.Errorf("get after uuid: %w", err)
@@ -78,8 +77,7 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 
 		switch {
 		case err == nil:
-			query = query.Where(event.IDLT(cursor))
-			previousElementCheckQuery = previousElementCheckQuery.Where(event.IDGT(cursor))
+			query = query.Where(event.IDGT(cursor))
 		case errors.Is(err, ErrNoCursor): // no cursor, do nothing
 		default:
 			return nil, fmt.Errorf("get before uuid: %w", err)
@@ -94,7 +92,17 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 	if err != nil {
 		return nil, fmt.Errorf("list events: %w", err)
 	}
-	hasPreviousPage, err := previousElementCheckQuery.Exist(ctx)
+
+	hasPreviousPage, err := func() (bool, error) {
+		if len(eventsDao) == 0 {
+			// FIXME: implement guess
+			return false, nil
+		}
+
+		return previousElementCheckQuery.
+			Where(event.IDLT(eventsDao[0].ID)).
+			Exist(ctx)
+	}()
 	if err != nil {
 		return nil, fmt.Errorf("check previous element: %w", err)
 	}
