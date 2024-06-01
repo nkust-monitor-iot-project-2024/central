@@ -1,0 +1,102 @@
+type Query {
+  # Get the specific event by ID
+  event(id: ID!): Event
+
+  # Get the list of events
+  events(
+    # The number of events to return
+    first: Int = 10
+    # The cursor to start the query from
+    after: String
+  ): EventConnection!
+}
+
+type EventConnection {
+  # The list of events
+  edges: [EventEdge!]!
+
+  # The cursor to the next page
+  pageInfo: PageInfo!
+}
+
+type EventEdge {
+  # The cursor of the event
+  cursor: String!
+
+  # The event
+  node: Event!
+}
+
+type PageInfo {
+  # The cursor of the first event
+  startCursor: String
+
+  # The cursor of the last event
+  endCursor: String
+
+  # Whether there is a next page
+  hasNextPage: Boolean!
+}
+
+type Event {
+  ### Event Metadata ###
+
+  # The ID of the event
+  eventID: ID!
+
+  # The identifier of the device triggered the event
+  deviceID: String!
+
+  # The timestamp of the event
+  timestamp: String!
+
+  # The parent event of the event
+  parent: Event
+
+  # The type of the event
+  # It can be "movement" or "invaded"
+  type: EventType!
+
+  # The details of the event
+  details: EventDetails!
+}
+
+enum EventType {
+  MOVEMENT
+  INVADED
+}
+
+union EventDetails = MovementEvent | InvadedEvent
+
+type MovementEvent {
+  movement: Movement!
+}
+
+type InvadedEvent {
+  invader: [Invader!]!
+}
+
+type Movement {
+  # The ID of the movement
+  movementID: ID!
+
+  # The picture of the movement in Base64.
+  encodedPicture: String!
+
+  # The mime of the picture.
+  pictureMime: String!
+}
+
+type Invader {
+  # The ID of the invader
+  invaderID: ID!
+
+  # The picture of the invader in Base64.
+  encodedPicture: String!
+
+  # The mime of the picture.
+  pictureMime: String!
+
+  # The confidence of the invader.
+  confidence: Float!
+}
