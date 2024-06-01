@@ -16,6 +16,7 @@ require (
 	github.com/samber/mo v1.11.0
 	github.com/stretchr/testify v1.9.0
 	github.com/vektah/gqlparser/v2 v2.5.12
+	github.com/zhevron/gqlgen-opentelemetry/v2 v2.1.3
 	go.opentelemetry.io/contrib/bridges/otelslog v0.2.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.52.0
 	go.opentelemetry.io/otel v1.27.0
@@ -66,7 +67,6 @@ require (
 	github.com/urfave/cli/v2 v2.27.2 // indirect
 	github.com/xrash/smetrics v0.0.0-20240312152122-5f08fbb34913 // indirect
 	github.com/zclconf/go-cty v1.14.4 // indirect
-	github.com/zhevron/gqlgen-opentelemetry v1.0.4 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.27.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.2.0 // indirect
 	go.uber.org/dig v1.17.1 // indirect

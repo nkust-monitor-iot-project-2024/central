@@ -19,7 +19,7 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/graph"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/services"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
-	gqlgenopentelemetry "github.com/zhevron/gqlgen-opentelemetry"
+	gqlgenopentelemetry "github.com/zhevron/gqlgen-opentelemetry/v2"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/fx"
 )
@@ -57,7 +57,7 @@ func (s *Service) Run(_ context.Context) error {
 	certFile := s.config.String("service.publiceventfacade.tls.cert_file")
 	keyFile := s.config.String("service.publiceventfacade.tls.key_file")
 
-	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
+	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: s.resolver}))
 	srv.Use(gqlgenopentelemetry.Tracer{
 		IncludeVariables: true,
 	})
