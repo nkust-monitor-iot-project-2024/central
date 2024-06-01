@@ -39,6 +39,13 @@ insecure = true
 uri = "entity-recognition.your-gpu-machine.internal"
 tls = { cert_file = "/etc/iotmonitor/services/entityrecognition/cert.pem", key_file = "/etc/iotmonitor/services/entityrecognition/key.pem" }
 
+# SERVICES - Public Event Facade
+[service.publiceventfacade]
+port = 1145  # by default, it is 8080
+[service.publiceventfacade.tls]
+cert_file = "/etc/iotmonitor/services/publiceventfacade/cert.pem"
+key_file = "/etc/iotmonitor/services/publiceventfacade/key.pem"
+
 # RABBITMQ
 [mq]
 address = "${RABBITMQ_URI}"
