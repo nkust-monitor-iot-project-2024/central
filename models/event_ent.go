@@ -56,10 +56,10 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 			return nil, fmt.Errorf("get cursor uuid: %w", err)
 		}
 	} else {
-		query = query.Where(event.IDGT(cursor))
+		query = query.Where(event.IDLT(cursor))
 	}
 
-	query = query.Limit(filter.GetLimit())
+	query = query.Limit(filter.GetLimit() + 1 /* hasNextPage */)
 
 	// get response
 	eventsDao, err := query.All(ctx)
