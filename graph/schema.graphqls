@@ -1,13 +1,24 @@
+scalar Time
+scalar UUID
+
+directive @goField(
+  forceResolver: Boolean
+  name: String
+  omittable: Boolean
+) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+
 type Query {
   # Get the specific event by ID
-  event(id: ID!): Event
+  event(id: UUID!): Event
 
   # Get the list of events
   events(
     # The number of events to return
-    first: Int = 10
+    first: Int! = 10
     # The cursor to start the query from
     after: String
+    # The event type to filter
+    eventType: EventType
   ): EventConnection!
 }
 
@@ -42,16 +53,18 @@ type Event {
   ### Event Metadata ###
 
   # The ID of the event
-  eventID: ID!
+  eventID: UUID!
 
   # The identifier of the device triggered the event
   deviceID: String!
 
   # The timestamp of the event
-  timestamp: String!
+  timestamp: Time!
 
   # The parent event of the event
-  parent: Event
+  parentEventID: UUID
+  parentEvent: Event
+    @goField(forceResolver: true)
 
   # The type of the event
   # It can be "movement" or "invaded"
@@ -73,12 +86,12 @@ type MovementEvent {
 }
 
 type InvadedEvent {
-  invader: [Invader!]!
+  invaders: [Invader!]!
 }
 
 type Movement {
   # The ID of the movement
-  movementID: ID!
+  movementID: UUID!
 
   # The picture of the movement in Base64.
   encodedPicture: String!
@@ -89,7 +102,7 @@ type Movement {
 
 type Invader {
   # The ID of the invader
-  invaderID: ID!
+  invaderID: UUID!
 
   # The picture of the invader in Base64.
   encodedPicture: String!

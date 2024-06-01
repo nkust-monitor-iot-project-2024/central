@@ -8,20 +8,167 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nkust-monitor-iot-project-2024/central/graph/model"
+	"github.com/google/uuid"
+	"github.com/nkust-monitor-iot-project-2024/central/ent"
+	gqlModel "github.com/nkust-monitor-iot-project-2024/central/graph/model"
+	"github.com/nkust-monitor-iot-project-2024/central/models"
+	"github.com/samber/lo"
+	"github.com/samber/mo"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
+// ParentEvent is the resolver for the parentEvent field.
+func (r *eventResolver) ParentEvent(ctx context.Context, obj *gqlModel.Event) (*gqlModel.Event, error) {
+	var (
+		GraphqlErrorCodeNotFound = NewGraphqlErrorCode("PARENT_NOT_FOUND", "Could not find the parent (deleted?)")
+	)
+
+	ctx, span := r.tracer.Start(ctx, "gql/event_resolver/parent_event")
+	defer span.End()
+
+	span.AddEvent("query parent", trace.WithAttributes(
+		attribute.String("event_id", obj.EventID.String()),
+		attribute.String("parent_event_id", obj.ParentEventID.String())))
+
+	parent, err := r.eventRepo.GetEvent(ctx, obj.EventID)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			span.SetStatus(codes.Error, "parent should be existed but not found")
+			span.RecordError(err)
+
+			return nil, NewTraceableErrorWithCode(ctx, GraphqlErrorCodeNotFound, err)
+		}
+
+		span.SetStatus(codes.Error, "get parent error")
+		span.RecordError(err)
+
+		return nil, NewTraceableErrorWithCode(ctx, GraphqlErrorCodeInternalError, fmt.Errorf("get parent: %w", err))
+	}
+
+	span.AddEvent("turning parent into graphql", trace.WithAttributes(attribute.String("id", parent.GetEventID().String())))
+	parentGql, err := ModelToGql(parent)
+	if err != nil {
+		span.SetStatus(codes.Error, "convert parent to graphql error")
+		span.RecordError(err)
+
+		return nil, NewTraceableErrorWithCode(ctx, GraphqlErrorCodeInternalError, fmt.Errorf("convert parent to graphql: %w", err))
+	}
+
+	span.SetStatus(codes.Ok, "parent found")
+	return parentGql, nil
+}
+
 // Event is the resolver for the event field.
-func (r *queryResolver) Event(ctx context.Context, id string) (*model.Event, error) {
-	panic(fmt.Errorf("not implemented: Event - event"))
+func (r *queryResolver) Event(ctx context.Context, id uuid.UUID) (*gqlModel.Event, error) {
+	var (
+		GraphqlErrorCodeNotFound = NewGraphqlErrorCode("NOT_FOUND", "Not found")
+	)
+
+	ctx, span := r.tracer.Start(ctx, "gql/query_resolver/event")
+	defer span.End()
+
+	span.AddEvent("query event", trace.WithAttributes(attribute.String("id", id.String())))
+	event, err := r.eventRepo.GetEvent(ctx, id)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			span.SetStatus(codes.Ok, "event not found")
+
+			return nil, NewTraceableErrorWithCode(ctx, GraphqlErrorCodeNotFound, err)
+		}
+
+		span.SetStatus(codes.Error, "get event error")
+		span.RecordError(err)
+
+		return nil, NewTraceableErrorWithCode(ctx, GraphqlErrorCodeInternalError, fmt.Errorf("get event: %w", err))
+	}
+
+	span.AddEvent("turning event into graphql", trace.WithAttributes(attribute.String("id", id.String())))
+	eventGql, err := ModelToGql(event)
+	if err != nil {
+		span.SetStatus(codes.Error, "convert event to graphql error")
+		span.RecordError(err)
+
+		return nil, NewTraceableErrorWithCode(ctx, GraphqlErrorCodeInternalError, fmt.Errorf("convert event to graphql: %w", err))
+	}
+
+	span.SetStatus(codes.Ok, "event found")
+	return eventGql, nil
 }
 
 // Events is the resolver for the events field.
-func (r *queryResolver) Events(ctx context.Context, first *int, after *string) (*model.EventConnection, error) {
-	panic(fmt.Errorf("not implemented: Events - events"))
+func (r *queryResolver) Events(ctx context.Context, first int, after *string, eventType *gqlModel.EventType) (*gqlModel.EventConnection, error) {
+	ctx, span := r.tracer.Start(ctx, "gql/query_resolver/events")
+	defer span.End()
+
+	convertAttributes := []attribute.KeyValue{
+		attribute.Int("first", first),
+	}
+	if after != nil {
+		convertAttributes = append(convertAttributes, attribute.String("after", *after))
+	}
+	if eventType != nil {
+		convertAttributes = append(convertAttributes, attribute.String("event_type", string(*eventType)))
+	}
+
+	span.AddEvent("converting graphql request to internal representation",
+		trace.WithAttributes(convertAttributes...))
+	convertedEventType := mo.None[models.EventType]()
+	if eventType != nil {
+		eventTypeModelRepr, err := EventTypeFromGql(*eventType)
+		if err != nil {
+			span.SetStatus(codes.Error, "convert event type from graphql error")
+			span.RecordError(err)
+
+			return nil, NewTraceableErrorWithCode(
+				ctx, GraphqlErrorCodeInternalError,
+				fmt.Errorf("convert event type from graphql: %w", err))
+		}
+
+		convertedEventType = mo.Some(eventTypeModelRepr)
+	}
+	afterCursor := lo.FromPtrOr(after, "")
+
+	queryAttributes := []attribute.KeyValue{
+		attribute.Int("first", first),
+		attribute.String("after", afterCursor),
+	}
+	if eventType != nil {
+		queryAttributes = append(queryAttributes, attribute.String("event_type", string(*eventType)))
+	}
+
+	span.AddEvent("query events list", trace.WithAttributes(queryAttributes...))
+	eventsListResponse, err := r.eventRepo.ListEvents(ctx, models.EventListFilter{
+		Limit:     first,
+		Cursor:    afterCursor,
+		EventType: convertedEventType,
+	})
+	if err != nil {
+		span.SetStatus(codes.Error, "list events error")
+		span.RecordError(err)
+
+		return nil, NewTraceableErrorWithCode(ctx, GraphqlErrorCodeInternalError, fmt.Errorf("list events: %w", err))
+	}
+
+	span.AddEvent("turning events list into graphql", trace.WithAttributes(attribute.Int("count", len(eventsListResponse.Events))))
+	eventsGql, err := EventListResponseToGql(eventsListResponse)
+	if err != nil {
+		span.SetStatus(codes.Error, "convert events list to graphql error")
+		span.RecordError(err)
+
+		return nil, NewTraceableErrorWithCode(ctx, GraphqlErrorCodeInternalError, fmt.Errorf("convert events list to graphql: %w", err))
+	}
+
+	span.SetStatus(codes.Ok, "events fetched")
+	return eventsGql, nil
 }
+
+// Event returns EventResolver implementation.
+func (r *Resolver) Event() EventResolver { return &eventResolver{r} }
 
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
+type eventResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
