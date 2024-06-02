@@ -10,6 +10,7 @@ import (
 	"github.com/eclipse/paho.golang/autopaho"
 	"github.com/eclipse/paho.golang/paho"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
+	"github.com/nkust-monitor-iot-project-2024/central/internal/mq/mqttext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -41,6 +42,7 @@ func ConnectMqttReceiver(config utils.Config) (*MqttReceiver, error) {
 	const topic = "iot/events/v1/#"
 
 	tracer := otel.GetTracerProvider().Tracer("mqtt-receiver")
+	propagator := otel.GetTextMapPropagator()
 
 	serverUrlRaw := config.String("mq.mqtt.uri")
 	if serverUrlRaw == "" {
@@ -76,6 +78,7 @@ func ConnectMqttReceiver(config utils.Config) (*MqttReceiver, error) {
 			ClientID: "central/mqtt-receiver",
 			OnPublishReceived: []func(paho.PublishReceived) (bool, error){
 				func(pr paho.PublishReceived) (bool, error) {
+					ctx = propagator.Extract(ctx, mqttext.NewHeaderSupplier(pr.Packet.Properties.User))
 					ctx, span := tracer.Start(ctx, "mqtt-forwarder/mqtt/on_publish_received")
 					defer span.End()
 
