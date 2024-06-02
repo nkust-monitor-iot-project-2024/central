@@ -92,7 +92,8 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 
 	hasPrevPage, hasNextPage, err := func() (bool, bool, error) {
 		if len(eventsDao) == 0 {
-			return false, false, nil
+			// there may be previous page, but definitively no next page
+			return true, false, nil
 		}
 
 		hasNewerElement, err := newerElementQuery.
@@ -129,6 +130,17 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 		}
 
 		events = append(events, eventModel)
+	}
+	if len(events) == 0 {
+		return &EventListResponse{
+			Events: events,
+			Pagination: PaginationInfo{
+				HasPreviousPage: hasPrevPage,
+				HasNextPage:     hasNextPage,
+				StartCursor:     "",
+				EndCursor:       "",
+			},
+		}, nil
 	}
 
 	return &EventListResponse{
