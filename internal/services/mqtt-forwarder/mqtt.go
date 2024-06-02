@@ -38,7 +38,7 @@ type TraceableMqttPublish struct {
 //
 // It maintains a context.Context internally. To stop the MQTT receiver, call Close.
 func ConnectMqttReceiver(config utils.Config) (*MqttReceiver, error) {
-	const topic = "iot/events/#"
+	const topic = "iot/events/v1/#"
 
 	tracer := otel.GetTracerProvider().Tracer("mqtt-receiver")
 
