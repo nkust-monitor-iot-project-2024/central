@@ -49,11 +49,11 @@ key_file = "/etc/iotmonitor/services/publiceventfacade/key.pem"
 
 # RABBITMQ
 [mq]
-address = "${RABBITMQ_URI}"
+uri = "${RABBITMQ_URI}"
 
 # MQTT
 [mq.mqtt]
-address = "tcp://mqtt-broker.iot.local:1883"
+uri = "tcp://mqtt-broker.iot.local:1883"
 ```
 
 To build the service, you should install [Taskfile runner](https://taskfile.dev/usage/), then you can run the command to build the microservices:

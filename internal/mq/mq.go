@@ -65,11 +65,11 @@ type amqpMQ struct {
 	logger     *slog.Logger
 }
 
-var errMQAddressNotSet = errors.New("rabbitmq address is not set")
+var errMQURINotSet = errors.New("rabbitmq URI is not set")
 
 // ConnectAmqp connects to the AMQP message queue.
 //
-// The config "mq.address" specifies the address of the AMQP server.
+// The config "mq.uri" specifies the URI to the AMQP server.
 func ConnectAmqp(config utils.Config) (MessageQueue, error) {
 	const name = "amqpMQ"
 
@@ -77,9 +77,9 @@ func ConnectAmqp(config utils.Config) (MessageQueue, error) {
 	tracer := otel.GetTracerProvider().Tracer(name)
 	logger := utils.NewLogger(name)
 
-	mqAddress := config.String("mq.address")
+	mqAddress := config.String("mq.uri")
 	if mqAddress == "" {
-		return nil, errMQAddressNotSet
+		return nil, errMQURINotSet
 	}
 
 	return &amqpMQ{
@@ -92,7 +92,7 @@ func ConnectAmqp(config utils.Config) (MessageQueue, error) {
 
 func (mq *amqpMQ) openMQConnection() (*amqp091.Connection, error) {
 	if mq.mqAddress == "" {
-		return nil, errMQAddressNotSet
+		return nil, errMQURINotSet
 	}
 
 	conn, err := amqp091.Dial(mq.mqAddress)
