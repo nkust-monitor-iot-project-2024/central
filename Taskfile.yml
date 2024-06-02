@@ -55,7 +55,13 @@ tasks:
     cmds:
       - go build -o out/service-public-event-facade ./cmd/public-event-facade
 
+  service-mqtt-forwarder:
+    run: once
+    deps: [protoc, gqlgen]
+    cmds:
+      - go build -o out/service-mqtt-forwarder ./cmd/mqtt-forwarder
+
   service-all:
     run: once
     deps: [service-event-aggregator, service-recognition-facade,
-           service-public-event-facade]
+           service-public-event-facade, service-mqtt-forwarder]
