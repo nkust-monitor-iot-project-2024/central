@@ -4,7 +4,8 @@ This is a monorepo with the following services:
 
 * [event-aggregator](./cmd/event-aggregator)
 * [recognition-facade](./cmd/recognition-facade)
-* public-event-facade
+* [public-event-facade](./cmd/public-event-facade)
+* [mqtt-forwarder](./cmd/mqtt-forwarder)
 
 and the gRPC/Protobuf definition, OpenTelemetry, MQ, database modules.
 
@@ -49,6 +50,10 @@ key_file = "/etc/iotmonitor/services/publiceventfacade/key.pem"
 # RABBITMQ
 [mq]
 address = "${RABBITMQ_URI}"
+
+# MQTT
+[mq.mqtt]
+address = "tcp://mqtt-broker.iot.local:1883"
 ```
 
 To build the service, you should install [Taskfile runner](https://taskfile.dev/usage/), then you can run the command to build the microservices:
