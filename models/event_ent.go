@@ -55,9 +55,8 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 		query = query.Where(event.TypeEQ(event.Type(eventType)))
 	}
 
-	previousElementCheckQuery := query.Clone()
-
-	var limit int
+	newerElementQuery := query.Clone()
+	olderElementQuery := query.Clone()
 
 	switch pagination := paginationFilter.(type) {
 	case ForwardPagination:
@@ -70,8 +69,7 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 			return nil, fmt.Errorf("get after uuid: %w", err)
 		}
 
-		query = query.Limit(pagination.GetFirst() + 1 /* hasNextPage */)
-		limit = pagination.GetFirst()
+		query = query.Limit(pagination.GetFirst())
 	case BackwardPagination:
 		cursor, err := pagination.GetBeforeUUID()
 
@@ -83,8 +81,7 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 			return nil, fmt.Errorf("get before uuid: %w", err)
 		}
 
-		query = query.Limit(pagination.GetLast() + 1 /* hasNextPage */)
-		limit = pagination.GetLast()
+		query = query.Limit(pagination.GetLast())
 	}
 
 	// get response
@@ -93,18 +90,35 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 		return nil, fmt.Errorf("list events: %w", err)
 	}
 
-	hasPreviousPage, err := func() (bool, error) {
+	hasPrevPage, hasNextPage, err := func() (bool, bool, error) {
 		if len(eventsDao) == 0 {
-			// FIXME: implement guess
-			return false, nil
+			return false, false, nil
 		}
 
-		return previousElementCheckQuery.
+		hasNewerElement, err := newerElementQuery.
 			Where(event.IDGT(eventsDao[0].ID)).
 			Exist(ctx)
+		if err != nil {
+			return false, false, fmt.Errorf("check newer element: %w", err)
+		}
+		hasOlderElement, err := olderElementQuery.
+			Where(event.IDLT(eventsDao[len(eventsDao)-1].ID)).
+			Exist(ctx)
+		if err != nil {
+			return false, false, fmt.Errorf("check older element: %w", err)
+		}
+
+		switch paginationFilter.(type) {
+		case BackwardPagination:
+			return hasOlderElement, hasNewerElement, nil
+		case ForwardPagination:
+			return hasNewerElement, hasOlderElement, nil
+		}
+
+		return false, false, fmt.Errorf("unknown pagination type: %T", paginationFilter)
 	}()
 	if err != nil {
-		return nil, fmt.Errorf("check previous element: %w", err)
+		return nil, fmt.Errorf("check pagination: %w", err)
 	}
 
 	events := make([]Event, 0, len(eventsDao))
@@ -117,10 +131,14 @@ func (r *eventRepositoryEnt) ListEvents(ctx context.Context, filter EventListFil
 		events = append(events, eventModel)
 	}
 
-	paginatedEvents, paginationInfo := GeneratePaginationInfo(events, limit, hasPreviousPage)
 	return &EventListResponse{
-		Events:     paginatedEvents,
-		Pagination: paginationInfo,
+		Events: events,
+		Pagination: PaginationInfo{
+			HasPreviousPage: hasPrevPage,
+			HasNextPage:     hasNextPage,
+			StartCursor:     UUIDToCursor(eventsDao[0].ID),
+			EndCursor:       UUIDToCursor(eventsDao[len(eventsDao)-1].ID),
+		},
 	}, nil
 }
 
