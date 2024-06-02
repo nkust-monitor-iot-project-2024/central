@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 // EventSubscriber is the interface for services to subscribe to event messages.
@@ -183,13 +183,13 @@ func (w *amqpTraceableEventMessageDelivery) Metadata() (models.Metadata, error) 
 }
 
 func (w *amqpTraceableEventMessageDelivery) Body() (*eventpb.EventMessage, error) {
-	if w.Delivery.ContentType != "application/json" || w.Delivery.Type != "eventpb.EventMessage" {
+	if w.Delivery.ContentType != "application/x-google-protobuf" || w.Delivery.Type != "eventpb.EventMessage" {
 		return nil, errors.New("invalid header")
 	}
 
 	event := &eventpb.EventMessage{}
 
-	if err := protojson.Unmarshal(w.Delivery.Body, event); err != nil {
+	if err := proto.Unmarshal(w.Delivery.Body, event); err != nil {
 		return nil, fmt.Errorf("unmarshal: %w", err)
 	}
 

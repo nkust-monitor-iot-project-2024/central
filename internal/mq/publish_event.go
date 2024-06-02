@@ -14,7 +14,7 @@ import (
 	"github.com/samber/mo"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 // EventPublisher is the interface for services to publish an event messages.
@@ -113,13 +113,13 @@ func (mq *amqpMQ) createPublishingMessage(ctx context.Context, metadata models.M
 	header := amqp091.Table{}
 	mq.propagator.Inject(ctx, amqpext.NewHeaderSupplier(header))
 
-	marshalledBody, err := protojson.Marshal(event)
+	marshalledBody, err := proto.Marshal(event)
 	if err != nil {
 		return "", amqp091.Publishing{}, fmt.Errorf("marshal event: %w", err)
 	}
 
 	return getMessageKey(mo.Some(eventType)), amqp091.Publishing{
-		ContentType: "application/json",
+		ContentType: "application/x-google-protobuf",
 		MessageId:   metadata.GetEventID().String(),
 		Timestamp:   metadata.GetEmittedAt(),
 		Type:        "eventpb.EventMessage",
