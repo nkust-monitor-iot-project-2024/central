@@ -11,14 +11,29 @@ import (
 	"fmt"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
+	"github.com/nkust-monitor-iot-project-2024/central/internal/services"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
+	"go.uber.org/fx"
 	"golang.org/x/sync/errgroup"
+)
+
+// FxModule is the fx module for the Service that handles the cleanup.
+var FxModule = fx.Module(
+	"mqtt-forwarder",
+	mq.FxModule,
+	fx.Provide(fx.Annotate(newFx, fx.As(new(services.Service)))),
+	fx.Invoke(services.BootstrapFxService),
 )
 
 // Service is the MQTT forwarder service.
 type Service struct {
 	publisher mq.EventPublisher
 	config    utils.Config
+}
+
+// newFx provides the constructor for the MQTT forwarder service.
+func newFx(publisher mq.MessageQueue, config utils.Config) *Service {
+	return New(publisher, config)
 }
 
 // New creates a new MQTT forwarder service.
