@@ -22,7 +22,7 @@ func (h *HeaderSupplier) Get(key string) string {
 	return h.header.Get(key)
 }
 
-func (h *HeaderSupplier) Set(key string, value string) {
+func (h *HeaderSupplier) Set(_ string, _ string) {
 	// unsupported; noop
 }
 
