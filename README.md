@@ -84,6 +84,23 @@ go generate ./ent
 
 wip (Zeabur template)
 
+## Specification
+
+### AMQP Message Specification
+
+For a `Event`:
+
+- The Message ID is the event ID, and must be in UUID format.
+- The Timestamp will be the EmittedAt of the event.
+- The App ID should be your device ID.
+- The Content Type should be `application/x-google-protobuf`, and the Type should be `eventpb.EventMessage`.
+- The body should be formed in [`eventpb.EventMessage`](protos/eventpb/event.proto) and encoded in Protobuf Binary format.
+- The header can contain the W3C Trace Context and W3C Baggage information.
+  - The header key of Trace Context should be `tracestate` and `traceparent`.
+  - The header key of Baggage should be `baggage`.
+
+The implementation can be seen in [publish_event.go](internal/mq/publish_event.go).
+
 ## License & Author
 
 This project is licensed under the AGPL-3.0-or-later license. See the [LICENSE](./LICENSE) file for details.
