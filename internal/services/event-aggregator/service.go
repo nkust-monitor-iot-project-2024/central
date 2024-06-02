@@ -4,12 +4,12 @@ package event_aggregator
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/services"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"go.uber.org/fx"
+	"golang.org/x/sync/errgroup"
 )
 
 // FxModule is the fx module for the Service that handles the cleanup.
@@ -37,18 +37,16 @@ func New(repo models.EntEventRepository, mq mq.MessageQueue) *Service {
 
 // Run creates the sub-service (Storer) and blocks until something wrong or the context is canceled.
 func (s *Service) Run(ctx context.Context) error {
-	wg := sync.WaitGroup{}
 	storer, err := NewStorer(s)
 	if err != nil {
 		return fmt.Errorf("initialize storer: %w", err)
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	group, ctx := errgroup.WithContext(ctx)
+	group.Go(func() error {
 		storer.Run(ctx)
-	}()
+		return nil
+	})
 
-	wg.Wait()
-	return ctx.Err()
+	return group.Wait()
 }

@@ -8,13 +8,13 @@ package recognition_facade
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/discover"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/services"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/entityrecognitionpb"
 	"go.uber.org/fx"
+	"golang.org/x/sync/errgroup"
 )
 
 // FxModule is the fx module for the Service that handles the cleanup.
@@ -43,18 +43,16 @@ func New(messageQueue mq.MessageQueue, entityRecognitionClient entityrecognition
 
 // Run runs the service and blocks until the service is stopped by ctx or something wrong.
 func (s *Service) Run(ctx context.Context) error {
-	wg := sync.WaitGroup{}
 	recognizer, err := NewRecognizer(s)
 	if err != nil {
 		return fmt.Errorf("initialize recognizer: %w", err)
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	group, ctx := errgroup.WithContext(ctx)
+	group.Go(func() error {
 		recognizer.Run(ctx)
-	}()
+		return nil
+	})
 
-	wg.Wait()
-	return ctx.Err()
+	return group.Wait()
 }
