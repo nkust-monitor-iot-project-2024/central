@@ -86,21 +86,39 @@ wip (Zeabur template)
 
 ## Specification
 
+*Must* mean the field is required. *Can* mean the field is optional.
+
 ### AMQP Message Specification
 
 For a `Event`:
 
-- The Message ID is the event ID, and must be in UUID format.
-- The Timestamp will be the EmittedAt of the event.
-- The App ID should be your device ID.
-- The Content Type should be `application/x-google-protobuf`, and the Type should be `eventpb.EventMessage`.
-- The body should be formed in [`eventpb.EventMessage`](protos/eventpb/event.proto) and encoded in Protobuf Binary format.
+- The Exchange must be `events_topic`, and the Message Key must be in `event.v1.[event_type]`.
+- The Message ID must be the event ID, and must be in UUID format.
+- The Timestamp must be the emitted timestamp of the event.
+- The App ID must be your device ID.
+- The Content Type must be `application/x-google-protobuf`, and the Type should be `eventpb.EventMessage`.
+- The body must be formed in [`eventpb.EventMessage`](protos/eventpb/event.proto) and encoded in Protobuf Binary format.
 - The header can contain the W3C Trace Context and W3C Baggage information.
   - The header key of Trace Context should be `tracestate` and `traceparent`.
   - The header key of Baggage should be `baggage`.
-- The header can contain the `parent_event_id` optionally. If there is one, it must be in UUID format.
+- The header can contain the `parent_event_id`. If there is one, it must be in UUID format.
 
 The implementation can be seen in [publish_event.go](internal/mq/publish_event.go).
+
+### MQTT Message Specification
+
+For a `Event`:
+
+- The Topic must be `iot/events/v1/[event_type]`.
+- The Content Type must be `application/x-google-protobuf`.
+- The Payload must be formed in [`eventpb.EventMessage`](protos/eventpb/event.proto) and encoded in Protobuf Binary format.
+- The Header must contain `event_id`, and it must be in UUID format.
+- The Header must contain non-empty `device_id`.
+- The Header must contain `emitted_at` of the event, and must be in the RFC3339Nano format.
+- The Header can contain the `parent_event_id` optionally. If there is one, it must be in UUID format.
+- The Header can contain the W3C Trace Context and W3C Baggage information.
+  - The header key of Trace Context should be `tracestate` and `traceparent`.
+  - The header key of Baggage should be `baggage`.
 
 ## License & Author
 
