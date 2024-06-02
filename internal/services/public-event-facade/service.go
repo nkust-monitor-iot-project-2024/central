@@ -20,7 +20,6 @@ import (
 	"github.com/nkust-monitor-iot-project-2024/central/internal/services"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	gqlgenopentelemetry "github.com/zhevron/gqlgen-opentelemetry/v2"
-	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/fx"
 )
 
@@ -35,8 +34,6 @@ var FxModule = fx.Module("public-event-facade",
 type Service struct {
 	config   utils.Config
 	resolver *graph.Resolver
-
-	tracer trace.Tracer
 }
 
 // New creates a new Service.
