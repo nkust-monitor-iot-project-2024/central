@@ -175,11 +175,23 @@ func (w *amqpTraceableEventMessageDelivery) Metadata() (models.Metadata, error) 
 
 	eventTs := w.Delivery.Timestamp
 
-	return models.Metadata{
-		EventID:   eventUUID,
-		DeviceID:  deviceID,
-		EmittedAt: eventTs,
-	}, nil
+	metadata := models.Metadata{
+		EventID:       eventUUID,
+		DeviceID:      deviceID,
+		EmittedAt:     eventTs,
+		ParentEventID: mo.None[uuid.UUID](),
+	}
+
+	if parentEventID, ok := w.Headers["parent_event_id"]; ok {
+		parentEventUUID, err := uuid.Parse(parentEventID.(string))
+		if err != nil {
+			return models.Metadata{}, fmt.Errorf("parse parent_event_id: %w", err)
+		}
+
+		metadata.ParentEventID = mo.Some[uuid.UUID](parentEventUUID)
+	}
+
+	return metadata, nil
 }
 
 func (w *amqpTraceableEventMessageDelivery) Body() (*eventpb.EventMessage, error) {

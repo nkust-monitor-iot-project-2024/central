@@ -113,6 +113,10 @@ func (mq *amqpMQ) createPublishingMessage(ctx context.Context, metadata models.M
 	header := amqp091.Table{}
 	mq.propagator.Inject(ctx, amqpext.NewHeaderSupplier(header))
 
+	if parentEventID, ok := metadata.GetParentEventID(); ok {
+		header["parent_event_id"] = parentEventID.String()
+	}
+
 	marshalledBody, err := proto.Marshal(event)
 	if err != nil {
 		return "", amqp091.Publishing{}, fmt.Errorf("marshal event: %w", err)

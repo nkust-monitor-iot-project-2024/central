@@ -98,6 +98,7 @@ For a `Event`:
 - The header can contain the W3C Trace Context and W3C Baggage information.
   - The header key of Trace Context should be `tracestate` and `traceparent`.
   - The header key of Baggage should be `baggage`.
+- The header can contain the `parent_event_id` optionally. If there is one, it must be in UUID format.
 
 The implementation can be seen in [publish_event.go](internal/mq/publish_event.go).
 
