@@ -39,7 +39,7 @@ type TraceableMqttPublish struct {
 //
 // It maintains a context.Context internally. To stop the MQTT receiver, call Close.
 func ConnectMqttReceiver(config utils.Config) (*MqttReceiver, error) {
-	const topic = "iot/events/v1/#"
+	const topic = "iot/events/v1/+"
 
 	tracer := otel.GetTracerProvider().Tracer("mqtt-receiver")
 	propagator := otel.GetTextMapPropagator()
@@ -83,18 +83,15 @@ func ConnectMqttReceiver(config utils.Config) (*MqttReceiver, error) {
 					defer span.End()
 
 					if ctx.Err() != nil {
-						return false, nil
+						return false, ctx.Err()
 					}
 
-					span.AddEvent("received message", trace.WithAttributes(
-						attribute.Int("packetId", int(pr.Packet.PacketID)),
-						attribute.String("topic", pr.Packet.Topic),
-						attribute.Int("qos", int(pr.Packet.QoS)),
-					))
 					span.SetAttributes(
-						attribute.Int("packetId", int(pr.Packet.PacketID)),
-						attribute.String("topic", pr.Packet.Topic),
+						attribute.Int("mq.packet-id", int(pr.Packet.PacketID)),
+						attribute.String("mq.topic", pr.Packet.Topic),
+						attribute.Int("mq.qos", int(pr.Packet.QoS)),
 					)
+					span.AddEvent("received message")
 
 					mqttMessageChannel <- TraceableMqttPublish{
 						Publish:     pr.Packet,
