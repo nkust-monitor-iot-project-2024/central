@@ -101,7 +101,7 @@ func main() {
 				return fmt.Errorf("marshal body: %w", err)
 			}
 
-			_, err = c.Publish(ctx, &paho.Publish{
+			publishing, err := c.Publish(ctx, &paho.Publish{
 				QoS:   0,
 				Topic: "iot/events/v1/movement",
 				Properties: &paho.PublishProperties{
@@ -123,12 +123,21 @@ func main() {
 				},
 				Payload: marshalledBody,
 			})
-			return err
+			if err != nil {
+				return fmt.Errorf("publish: %w", err)
+			}
+
+			slog.Info("event published", slog.Any("publishing", publishing))
+			return nil
 		})
 	}
 
 	err = group.Wait()
 	if err != nil {
 		panic(err)
+	}
+
+	if err := c.Disconnect(ctx); err != nil {
+		panic(fmt.Errorf("disconnect: %w", err))
 	}
 }
