@@ -66,7 +66,7 @@ func main() {
 
 			for j, body := range bodiesToSend {
 				err := conn.PublishEvent(ctx, models.Metadata{
-					EventID:       uuid.New(),
+					EventID:       uuid.Must(uuid.NewV7()),
 					DeviceID:      "central/example/emit-event",
 					EmittedAt:     time.Now(),
 					ParentEventID: mo.None[uuid.UUID](),

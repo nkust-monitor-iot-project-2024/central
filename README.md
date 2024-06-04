@@ -98,7 +98,7 @@ wip (Zeabur template)
 For a `Event`:
 
 - The Exchange must be `events_topic`, and the Message Key must be in `event.v1.[event_type]`.
-- The Message ID must be the event ID, and must be in UUID format.
+- The Message ID must be the event ID, and must be in **UUID v7** format (ordered by time).
 - The Timestamp must be the emitted timestamp of the event.
 - The App ID must be your device ID.
 - The Content Type must be `application/x-google-protobuf`, and the Type should be `eventpb.EventMessage`.
@@ -117,7 +117,7 @@ For a `Event`:
 - The Topic must be `iot/events/v1/[event_type]`.
 - The Content Type must be `application/x-google-protobuf`.
 - The Payload must be formed in [`eventpb.EventMessage`](protos/eventpb/event.proto) and encoded in Protobuf Binary format.
-- The Header must contain `event_id`, and it must be in UUID format.
+- The Header must contain `event_id`, and it must be in **UUID v7** format (ordered by time).
 - The Header must contain non-empty `device_id`.
 - The Header must contain `emitted_at` of the event, and must be in the RFC3339Nano format.
 - The Header can contain the `parent_event_id` optionally. If there is one, it must be in UUID format.

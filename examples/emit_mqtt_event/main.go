@@ -109,7 +109,7 @@ func main() {
 					User: paho.UserPropertiesFromPacketUser([]packets.User{
 						{
 							Key:   "event_id",
-							Value: uuid.New().String(),
+							Value: uuid.Must(uuid.NewV7()).String(),
 						},
 						{
 							Key:   "device_id",
