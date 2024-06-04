@@ -71,19 +71,13 @@ Then you can run the service:
 
 ## Development
 
-You should build the protobuf first.
+You should build the protobuf and schema first. We provide a simple command to generate these:
 
 ```bash
-bash scripts/protoc.sh
+task generate
 ```
 
 I use [GoLand](https://www.jetbrains.com/go/) for development, but you can use any editor you like.
-
-If you change the ent schema, you should run the following command to update the schema:
-
-```bash
-go generate ./ent
-```
 
 ## Production deployment
 
