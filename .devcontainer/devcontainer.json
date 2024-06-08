@@ -1,0 +1,7 @@
+{
+  "image": "mcr.microsoft.com/devcontainers/go",
+  "features": {
+    "ghcr.io/devcontainers-contrib/features/protoc:1": {},
+    "ghcr.io/devcontainers-contrib/features/go-task:1": {},
+  }
+}
