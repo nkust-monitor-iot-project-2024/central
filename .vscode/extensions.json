@@ -1,0 +1,9 @@
+{
+    "recommendations": [
+        "graphql.vscode-graphql",
+        "graphql.vscode-graphql-syntax",
+        "plex.vscode-protolint",
+        "pbkit.vscode-pbkit",
+        "golang.go"
+    ]
+}
