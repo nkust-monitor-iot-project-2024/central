@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.11.0/.schema/devbox.schema.json",
+  "packages": [
+    "go@latest",
+    "go-task@latest",
+    "protoc-gen-go@latest",
+    "protobuf@latest",
+    "protoc-gen-go-grpc@latest"
+  ],
+  "shell": {
+    "scripts": {
+      "generate": [
+        "go-task generate"
+      ],
+      "test": [
+        "echo \"Error: no test specified\" && exit 1"
+      ]
+    }
+  }
+}
