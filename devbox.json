@@ -5,7 +5,8 @@
     "go-task@latest",
     "protoc-gen-go@latest",
     "protobuf@latest",
-    "protoc-gen-go-grpc@latest"
+    "protoc-gen-go-grpc@latest",
+    "protolint@latest"
   ],
   "shell": {
     "scripts": {

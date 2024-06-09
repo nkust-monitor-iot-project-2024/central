@@ -240,6 +240,54 @@
           "store_path": "/nix/store/x7ajlp6djvhlhw5jjzf8rabkxgka7m2j-protoc-gen-go-1.34.1"
         }
       }
+    },
+    "protolint@latest": {
+      "last_modified": "2024-06-06T04:00:50Z",
+      "resolved": "github:NixOS/nixpkgs/818dbe2f96df233d2041739d6079bb616d3e5597#protolint",
+      "source": "devbox-search",
+      "version": "0.49.8",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/45yfa025zq73ng25w8j2qnip1isarg1b-protolint-0.49.8",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/45yfa025zq73ng25w8j2qnip1isarg1b-protolint-0.49.8"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/iw7v6zbbr3ldqzp1v7is4hwq2xa1pl62-protolint-0.49.8",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/iw7v6zbbr3ldqzp1v7is4hwq2xa1pl62-protolint-0.49.8"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/43dz4xqwkcav04ganz6l5m072md4i6bw-protolint-0.49.8",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/43dz4xqwkcav04ganz6l5m072md4i6bw-protolint-0.49.8"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/gdnf9zbskqmlgjdcqc9fbshv616pgaap-protolint-0.49.8",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/gdnf9zbskqmlgjdcqc9fbshv616pgaap-protolint-0.49.8"
+        }
+      }
     }
   }
 }
