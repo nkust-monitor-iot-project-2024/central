@@ -40,6 +40,7 @@ var FxModule = fx.Module("amqp-mq", fx.Provide(func(lifecycle fx.Lifecycle, conf
 type MessageQueue interface {
 	EventSubscriber
 	MovementEventSubscriber
+	InvadedEventSubscriber
 
 	EventPublisher
 
