@@ -6,6 +6,7 @@ This is a monorepo with the following services:
 * [recognition-facade](./cmd/recognition-facade)
 * [public-event-facade](./cmd/public-event-facade)
 * [mqtt-forwarder](./cmd/mqtt-forwarder)
+* notification-publisher
 
 and the gRPC/Protobuf definition, OpenTelemetry, MQ, database modules.
 
@@ -46,6 +47,11 @@ port = 1145  # by default, it is 8080
 [service.publiceventfacade.tls]
 cert_file = "/etc/iotmonitor/services/publiceventfacade/cert.pem"
 key_file = "/etc/iotmonitor/services/publiceventfacade/key.pem"
+
+# NOTIFICATION PUBLISHER
+[service.notificationpublisher]
+public_event_facade_uri = "event-aggregator.your-machine.internal:8080"
+update_period = "1m"  # how long should we poll the database for new events
 
 # RABBITMQ
 [mq]

@@ -3,6 +3,7 @@ package mq
 import (
 	"context"
 	"fmt"
+	"github.com/nkust-monitor-iot-project-2024/central/internal/mq/event"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
@@ -45,6 +46,7 @@ type TraceableInvadedEventDelivery interface {
 	Body() (InvadedEventMessage, error)
 }
 
+// Deprecate: Use mqv2 instead.
 func (mq *amqpMQ) SubscribeInvadedEvent(ctx context.Context) (SubscribeResponse[TraceableInvadedEventDelivery], error) {
 	const consumer = "subscribe-invaded-event"
 
@@ -86,7 +88,7 @@ func (mq *amqpMQ) SubscribeInvadedEvent(ctx context.Context) (SubscribeResponse[
 	cs.Push(mqChannel.Close)
 
 	span.AddEvent("prepare AMQP queue")
-	exchangeName, err := declareEventsTopic(mqChannel)
+	exchangeName, err := event.declareEventsTopic(mqChannel)
 	if err != nil {
 		span.SetStatus(codes.Error, "declare exchange failed")
 		span.RecordError(err)
@@ -94,7 +96,7 @@ func (mq *amqpMQ) SubscribeInvadedEvent(ctx context.Context) (SubscribeResponse[
 		return response, fmt.Errorf("declare exchange: %w", err)
 	}
 
-	queue, prefetchCount, err := declareDurableQueueToTopic(mqChannel, exchangeName, mo.Some(models.EventTypeInvaded))
+	queue, prefetchCount, err := event.declareDurableQueueToTopic(mqChannel, exchangeName, mo.Some(models.EventTypeInvaded))
 	if err != nil {
 		span.SetStatus(codes.Error, "declare queue failed")
 		span.RecordError(err)
@@ -129,7 +131,7 @@ func (mq *amqpMQ) SubscribeInvadedEvent(ctx context.Context) (SubscribeResponse[
 		for rawMessage := range rawMessageCh {
 			// If the Acknowledger is nil, it means this message is not valid;
 			// if this message is over the requeue limit, we should reject it.
-			if rawMessage.Acknowledger == nil || isDeliveryOverRequeueLimit(rawMessage) {
+			if rawMessage.Acknowledger == nil || event.isDeliveryOverRequeueLimit(rawMessage) {
 				_ = rawMessage.Reject(false)
 				continue
 			}

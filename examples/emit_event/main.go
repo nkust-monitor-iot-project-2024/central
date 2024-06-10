@@ -3,14 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	mqevent "github.com/nkust-monitor-iot-project-2024/central/internal/mq/event"
+	mqv2 "github.com/nkust-monitor-iot-project-2024/central/internal/mq/v2"
+	"github.com/rabbitmq/amqp091-go"
+	"golang.org/x/sync/errgroup"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
@@ -46,39 +47,67 @@ func main() {
 		})
 	}
 
-	wg := sync.WaitGroup{}
-
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
-
-			conn, err := mq.ConnectAmqp(config)
-			if err != nil {
-				panic(fmt.Errorf("connect to rabbitmq: %w", err))
-			}
-			defer func() {
-				_ = conn.Close()
-			}()
-
-			for j, body := range bodiesToSend {
-				err := conn.PublishEvent(ctx, models.Metadata{
-					EventID:       uuid.Must(uuid.NewV7()),
-					DeviceID:      "central/example/emit-event",
-					EmittedAt:     time.Now(),
-					ParentEventID: mo.None[uuid.UUID](),
-				}, body)
-				if err != nil {
-					log.Println(fmt.Errorf("publish event: %w", err))
-				}
-
-				fmt.Println("Event emitted", i, j)
-			}
-		}()
+	amqp, err := mqv2.NewAmqpWrapper(config)
+	if err != nil {
+		panic(err)
 	}
 
-	wg.Wait()
+	group, ctx := errgroup.WithContext(ctx)
+	for i := 0; i < 10; i++ {
+		group.Go(func() error {
+			connection, err := amqp.NewConnection()
+			if err != nil {
+				return fmt.Errorf("new connection: %w", err)
+			}
+
+			channel, err := connection.Channel()
+			if err != nil {
+				return fmt.Errorf("get channel: %w", err)
+			}
+			defer func(channel *amqp091.Channel) {
+				_ = channel.Close()
+			}(channel)
+
+			exchangeName, err := mqevent.DeclareEventsTopic(channel)
+			if err != nil {
+				return fmt.Errorf("declare exchange: %w", err)
+			}
+
+			for _, body := range bodiesToSend {
+				eventType, publishing, err := mqevent.CreatePublishingEvent(ctx, mqevent.EventPublishingPayload{
+					Propagator: nil,
+					Metadata: models.Metadata{
+						EventID:       uuid.Must(uuid.NewV7()),
+						DeviceID:      "central/example/emit-event",
+						EmittedAt:     time.Now(),
+						ParentEventID: mo.None[uuid.UUID](),
+					},
+					Event: body,
+				})
+				if err != nil {
+					return fmt.Errorf("create publishing event: %w", err)
+				}
+
+				routingKey := mqevent.GetRoutingKey(mo.Some(eventType))
+
+				err = channel.PublishWithContext(
+					ctx,
+					exchangeName,
+					routingKey,
+					false, /* mandatory */
+					false, /* immediate */
+					publishing,
+				)
+				if err != nil {
+					return fmt.Errorf("publish event: %w", err)
+				}
+			}
+
+			return nil
+		})
+	}
+
+	if err := group.Wait(); err != nil {
+		panic(fmt.Errorf("emit event: %w", err))
+	}
 }

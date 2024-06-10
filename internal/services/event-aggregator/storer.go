@@ -3,27 +3,29 @@ package event_aggregator
 import (
 	"context"
 	"fmt"
-	"log/slog"
-
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/ent"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/otelattrext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
-	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
+	mqevent "github.com/nkust-monitor-iot-project-2024/central/internal/mq/event"
+	mqv2 "github.com/nkust-monitor-iot-project-2024/central/internal/mq/v2"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
+	"github.com/rabbitmq/amqp091-go"
 	"github.com/samber/lo"
+	"github.com/samber/mo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+	"log/slog"
+	"time"
 )
 
-// Storer is the service that retrieves Event from mq.MessageQueue
-// and stores them in the database.
+// Storer is the service that retrieves Events and stores them in the database.
 type Storer struct {
 	*Service
 
@@ -79,41 +81,121 @@ func NewStorer(service *Service) (*Storer, error) {
 
 // Run retrieves the events continuously from the channel until something wrong or the context is canceled.
 func (s *Storer) Run(ctx context.Context) {
-	for {
-		if ctx.Err() != nil {
-			return
-		}
-
-		delivery, err := s.messageQueue.SubscribeEvent(ctx)
+	for amqpConnectionResult := range s.amqp.NewConnectionSupplier(ctx) {
+		connection, err := amqpConnectionResult.Get()
 		if err != nil {
-			slog.Error("failed to subscribe event", slogext.Error(err))
-			return
+			slog.Error("failed to get AMQP connection", slogext.Error(err))
 		}
-
-	deliveryloop:
-		for {
-			select {
-			case <-ctx.Done():
-			case <-delivery.ClosedChan:
-				break deliveryloop
-
-			case delivery, ok := <-delivery.DeliveryChan:
-				if !ok {
-					break deliveryloop
-				}
-
-				s.handleEvent(ctx, delivery)
-			}
+		if err := s.runInConnection(ctx, connection); err != nil {
+			slog.ErrorContext(ctx, "seems like connection has something wrong", slogext.Error(err))
+		} else {
+			slog.WarnContext(ctx, "runInConnection long-running task seems stopped normally", slogext.Error(err))
 		}
-
-		if err := delivery.Cleanup(); err != nil {
-			slog.Debug("failed to cleanup the subscription", slogext.Error(err))
-		}
+		_ = connection.CloseDeadline(time.Now().Add(2 * time.Second))
 	}
 }
 
+func (s *Storer) runInConnection(ctx context.Context, connection *amqp091.Connection) error {
+	slog.InfoContext(ctx, "prepare channel, exchange, and queue for storing events")
+
+	channel, err := connection.Channel()
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get AMQP channel", slogext.Error(err))
+		return fmt.Errorf("get amqp connection: %w", err)
+	}
+	defer func(channel *amqp091.Channel) {
+		err := channel.Close()
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to close channel", slogext.Error(err))
+		}
+	}(channel)
+
+	exchangeName, err := mqevent.DeclareEventsTopic(channel)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to declare events topic exchange", slogext.Error(err))
+		return fmt.Errorf("declare events topic exchange: %w", err)
+	}
+
+	key := mqevent.GetRoutingKey(mo.None[models.EventType]())
+
+	const queueName = "event-aggregator-storer-queue"
+	queue, err := channel.QueueDeclare(
+		queueName,
+		true,  /* durable */
+		false, /* autoDelete */
+		false, /* exclusive */
+		false, /* noWait */
+		mqv2.QueueDeclareArgs,
+	)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to declare the queue",
+			slog.String("name", queueName),
+			slogext.Error(err))
+		return fmt.Errorf("declare queue: %w", err)
+	}
+
+	err = channel.QueueBind(
+		queue.Name,
+		key,
+		exchangeName,
+		false, /* noWait */
+		nil,   /* args */
+	)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to bind the queue",
+			slog.String("name", queue.Name),
+			slog.String("exchange", exchangeName),
+			slog.String("key", key),
+			slogext.Error(err))
+		return fmt.Errorf("bind queue: %w", err)
+	}
+
+	const consumer = "subscribe-event"
+
+	slog.InfoContext(ctx, "consume events from the queue",
+		slog.String("queue", queue.Name),
+		slog.String("exchange", exchangeName),
+		slog.String("key", key),
+		slog.String("consumer", consumer))
+	deliveries, err := channel.Consume(
+		queue.Name,
+		consumer,
+		false, /* autoAck */
+		false, /* exclusive */
+		false, /* noLocal */
+		false, /* noWait */
+		nil,   /* args */
+	)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to consume events from the queue",
+			slog.String("queue", queue.Name),
+			slog.String("exchange", exchangeName),
+			slog.String("key", key),
+			slog.String("consumer", consumer),
+			slogext.Error(err))
+		return fmt.Errorf("consume events: %w", err)
+	}
+
+	for delivery := range deliveries {
+		// If the Acknowledger is nil, it means this message is not valid;
+		// if this message is over the requeue limit, we should reject it.
+		if delivery.Acknowledger == nil || mqv2.IsDeliveryOverRequeueLimit(delivery) {
+			_ = delivery.Reject(false)
+			continue
+		}
+
+		eventDelivery := mqevent.AmqpEventMessageDelivery{
+			Delivery: delivery,
+		}
+
+		s.handleEvent(ctx, eventDelivery)
+	}
+
+	return nil
+}
+
 // handleEvent handles the event and calls the storeSingleEvent function to store the event in the database.
-func (s *Storer) handleEvent(ctx context.Context, delivery mq.TraceableEventDelivery) {
+func (s *Storer) handleEvent(ctx context.Context, delivery mqevent.AmqpEventMessageDelivery) {
 	ctx = delivery.Extract(ctx, s.propagator)
 	ctx, span := s.tracer.Start(ctx, "event-aggregator/storer/handle_event")
 	defer span.End()
@@ -123,7 +205,7 @@ func (s *Storer) handleEvent(ctx context.Context, delivery mq.TraceableEventDeli
 		span.SetStatus(codes.Error, "failed to get metadata from event")
 		span.RecordError(err)
 
-		_ = mq.Reject(delivery, false)
+		_ = delivery.Reject(false)
 		return
 	}
 	span.SetAttributes(
@@ -136,17 +218,17 @@ func (s *Storer) handleEvent(ctx context.Context, delivery mq.TraceableEventDeli
 		span.SetStatus(codes.Error, "failed to get body from event")
 		span.RecordError(err)
 
-		_ = mq.Reject(delivery, false)
+		_ = delivery.Reject(false)
 		return
 	}
 
 	span.AddEvent("storing events")
 	if ok := s.storeSingleEvent(ctx, body, metadata); !ok {
 		span.SetStatus(codes.Error, "failed to store event")
-		_ = mq.Reject(delivery, true)
+		_ = delivery.Reject(false)
 	} else {
 		span.SetStatus(codes.Ok, "event stored successfully")
-		_ = mq.Ack(delivery)
+		_ = delivery.Ack()
 	}
 }
 

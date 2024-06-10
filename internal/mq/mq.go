@@ -71,6 +71,8 @@ var errMQURINotSet = errors.New("rabbitmq URI is not set")
 // ConnectAmqp connects to the AMQP message queue.
 //
 // The config "mq.uri" specifies the URI to the AMQP server.
+//
+// Deprecate: Use mqv2 instead.
 func ConnectAmqp(config utils.Config) (MessageQueue, error) {
 	const name = "amqpMQ"
 

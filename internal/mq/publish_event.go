@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	event2 "github.com/nkust-monitor-iot-project-2024/central/internal/mq/event"
 	"log/slog"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
@@ -26,6 +27,8 @@ type EventPublisher interface {
 // PublishEvent publishes the event to AMQP instance.
 //
 // amqpMQ will open a publish-only channel, as the amqp library advised.
+//
+// Deprecate: Use mqv2 instead.
 func (mq *amqpMQ) PublishEvent(ctx context.Context, metadata models.Metadata, event *eventpb.EventMessage) error {
 	_, span := mq.tracer.Start(ctx, "mq/publish_event", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
@@ -55,7 +58,7 @@ func (mq *amqpMQ) PublishEvent(ctx context.Context, metadata models.Metadata, ev
 	span.AddEvent("prepared AMQP [publish] channel")
 
 	span.AddEvent("prepare AMQP exchange")
-	exchangeName, err := declareEventsTopic(mqChannel)
+	exchangeName, err := event2.declareEventsTopic(mqChannel)
 	if err != nil {
 		span.SetStatus(codes.Error, "declare exchange failed")
 		span.RecordError(err)
@@ -122,7 +125,7 @@ func (mq *amqpMQ) createPublishingMessage(ctx context.Context, metadata models.M
 		return "", amqp091.Publishing{}, fmt.Errorf("marshal event: %w", err)
 	}
 
-	return getMessageKey(mo.Some(eventType)), amqp091.Publishing{
+	return event2.getMessageKey(mo.Some(eventType)), amqp091.Publishing{
 		ContentType: "application/x-google-protobuf",
 		MessageId:   metadata.GetEventID().String(),
 		Timestamp:   metadata.GetEmittedAt(),

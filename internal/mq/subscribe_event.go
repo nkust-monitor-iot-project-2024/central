@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/mq/amqpext"
+	mqevent "github.com/nkust-monitor-iot-project-2024/central/internal/mq/event"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/eventpb"
@@ -44,6 +44,8 @@ type TraceableEventDelivery interface {
 }
 
 // SubscribeEvent subscribes to the event messages.
+//
+// Deprecate: Use mqv2 instead.
 func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (SubscribeResponse[TraceableEventDelivery], error) {
 	const consumer = "subscribe-event"
 
@@ -84,8 +86,21 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (SubscribeResponse[Traceab
 	}()
 	cs.Push(mqChannel.Close)
 
+	key := mqevent.GetRoutingKey(mo.None[models.EventType]())
+
+	queue, err = channel.QueueDeclare(
+		"",
+		true,
+		false,
+		false,
+		false,
+		amqp091.Table{
+			"x-queue-type": "quorum",
+		},
+	)
+
 	span.AddEvent("prepare AMQP queue")
-	exchangeName, err := declareEventsTopic(mqChannel)
+	exchangeName, err := event.declareEventsTopic(mqChannel)
 	if err != nil {
 		span.SetStatus(codes.Error, "declare exchange failed")
 		span.RecordError(err)
@@ -93,7 +108,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (SubscribeResponse[Traceab
 		return response, fmt.Errorf("declare exchange: %w", err)
 	}
 
-	queue, prefetchCount, err := declareDurableQueueToTopic(mqChannel, exchangeName, mo.None[models.EventType]())
+	queue, prefetchCount, err := event.declareDurableQueueToTopic(mqChannel, exchangeName, mo.None[models.EventType]())
 	if err != nil {
 		span.SetStatus(codes.Error, "declare queue failed")
 		span.RecordError(err)
@@ -128,7 +143,7 @@ func (mq *amqpMQ) SubscribeEvent(ctx context.Context) (SubscribeResponse[Traceab
 		for rawMessage := range rawMessageCh {
 			// If the Acknowledger is nil, it means this message is not valid;
 			// if this message is over the requeue limit, we should reject it.
-			if rawMessage.Acknowledger == nil || isDeliveryOverRequeueLimit(rawMessage) {
+			if rawMessage.Acknowledger == nil || event.isDeliveryOverRequeueLimit(rawMessage) {
 				_ = rawMessage.Reject(false)
 				continue
 			}

@@ -9,8 +9,8 @@ package mqtt_forwarder
 import (
 	"context"
 	"fmt"
+	mqv2 "github.com/nkust-monitor-iot-project-2024/central/internal/mq/v2"
 
-	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/services"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"go.uber.org/fx"
@@ -20,27 +20,22 @@ import (
 // FxModule is the fx module for the Service that handles the cleanup.
 var FxModule = fx.Module(
 	"mqtt-forwarder",
-	mq.FxModule,
-	fx.Provide(fx.Annotate(newFx, fx.As(new(services.Service)))),
+	mqv2.FxModule,
+	fx.Provide(fx.Annotate(New, fx.As(new(services.Service)))),
 	fx.Invoke(services.BootstrapFxService),
 )
 
 // Service is the MQTT forwarder service.
 type Service struct {
-	publisher mq.EventPublisher
-	config    utils.Config
-}
-
-// newFx provides the constructor for the MQTT forwarder service.
-func newFx(publisher mq.MessageQueue, config utils.Config) *Service {
-	return New(publisher, config)
+	amqp   mqv2.AmqpWrapper
+	config utils.Config
 }
 
 // New creates a new MQTT forwarder service.
-func New(publisher mq.EventPublisher, config utils.Config) *Service {
+func New(amqp mqv2.AmqpWrapper, config utils.Config) *Service {
 	return &Service{
-		publisher: publisher,
-		config:    config,
+		amqp:   amqp,
+		config: config,
 	}
 }
 
@@ -63,7 +58,10 @@ func (s *Service) Run(ctx context.Context) error {
 	})
 
 	group.Go(func() error {
-		amqpPublisher.PublishFromChannel(ctx, convertedMqttMessage)
+		for message := range convertedMqttMessage {
+			//amqpPublisher.PublishFromChannel(ctx, message)
+		}
+		//amqpPublisher.PublishFromChannel(ctx, convertedMqttMessage)
 		return nil
 	})
 

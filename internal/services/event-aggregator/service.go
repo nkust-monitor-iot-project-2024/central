@@ -4,8 +4,8 @@ package event_aggregator
 import (
 	"context"
 	"fmt"
+	mqv2 "github.com/nkust-monitor-iot-project-2024/central/internal/mq/v2"
 
-	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/services"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"go.uber.org/fx"
@@ -16,22 +16,22 @@ import (
 var FxModule = fx.Module(
 	"event-aggregator",
 	models.EventRepositoryEntFx,
-	mq.FxModule,
+	mqv2.FxModule,
 	fx.Provide(fx.Annotate(New, fx.As(new(services.Service)))),
 	fx.Invoke(services.BootstrapFxService),
 )
 
 // Service is the service that aggregates the events.
 type Service struct {
-	repo         models.EntEventRepository
-	messageQueue mq.MessageQueue
+	repo models.EntEventRepository
+	amqp *mqv2.AmqpWrapper
 }
 
 // New creates a new Service.
-func New(repo models.EntEventRepository, mq mq.MessageQueue) *Service {
+func New(repo models.EntEventRepository, amqp *mqv2.AmqpWrapper) *Service {
 	return &Service{
-		repo:         repo,
-		messageQueue: mq,
+		repo: repo,
+		amqp: amqp,
 	}
 }
 
