@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/otelattrext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
-	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/nkust-monitor-iot-project-2024/central/models"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/entityrecognitionpb"
@@ -270,7 +269,7 @@ func (r *Recognizer) processMovementEvent(ctx context.Context, movementDelivery 
 		span.SetStatus(codes.Error, "failed to get metadata from movement event")
 		span.RecordError(err)
 
-		_ = mq.Reject(movementDelivery, false)
+		_ = movementDelivery.Reject(false)
 		return nil, fmt.Errorf("get metadata: %w", err)
 	}
 
@@ -284,7 +283,7 @@ func (r *Recognizer) processMovementEvent(ctx context.Context, movementDelivery 
 		span.SetStatus(codes.Error, "failed to get body from movement event")
 		span.RecordError(err)
 
-		_ = mq.Reject(movementDelivery, false)
+		_ = movementDelivery.Reject(false)
 		return nil, fmt.Errorf("get body: %w", err)
 	}
 
@@ -301,14 +300,14 @@ func (r *Recognizer) processMovementEvent(ctx context.Context, movementDelivery 
 			span.SetStatus(codes.Error, "users provides a unprocessable image")
 			span.RecordError(err)
 
-			_ = mq.Reject(movementDelivery, false)
+			_ = movementDelivery.Reject(false)
 			return nil, fmt.Errorf("recognize entities: %w", err)
 		}
 
 		span.SetStatus(codes.Error, "failed to recognizeTask entities in the image")
 		span.RecordError(err)
 
-		_ = mq.Reject(movementDelivery, true)
+		_ = movementDelivery.Reject(true)
 		return nil, fmt.Errorf("recognize entities: %w", err)
 	}
 

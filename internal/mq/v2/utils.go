@@ -1,6 +1,10 @@
 package mqv2
 
-import "github.com/rabbitmq/amqp091-go"
+import (
+	"fmt"
+	"github.com/rabbitmq/amqp091-go"
+	"log/slog"
+)
 
 // QueueDeclareArgs is the arguments for declaring a queue.
 var QueueDeclareArgs = amqp091.Table{
