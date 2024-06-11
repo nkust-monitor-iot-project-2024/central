@@ -6,13 +6,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"time"
+
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
 	"github.com/rabbitmq/amqp091-go"
 	"github.com/samber/mo"
 	"go.uber.org/fx"
-	"log/slog"
-	"time"
 )
 
 // FxModule is the fx module for the MessageQueue, which handles the Close of MessageQueue correctly.
@@ -79,6 +80,8 @@ func (a *AmqpWrapper) NewConnectionSupplier(ctx context.Context) chan mo.Result[
 			// Connect to the AMQP server.
 			conn, err := a.NewConnection()
 			if err != nil {
+				slog.ErrorContext(ctx, "failed to connect to the AMQP server", slogext.Error(err))
+
 				retryCount += 1
 
 				if retryCount > 5 { // retry 5 times
@@ -90,6 +93,8 @@ func (a *AmqpWrapper) NewConnectionSupplier(ctx context.Context) chan mo.Result[
 
 					return
 				}
+
+				continue
 			}
 
 			// Push the connection for the consumer.
@@ -109,7 +114,7 @@ func (a *AmqpWrapper) NewConnectionSupplier(ctx context.Context) chan mo.Result[
 				err := conn.CloseDeadline(time.Now().Add(1 * time.Second))
 				slog.ErrorContext(ctx, "failed to close the connection", slogext.Error(err))
 				return
-			case err := <-conn.NotifyClose(make(chan *amqp091.Error)):
+			case err := <-conn.NotifyClose(make(chan *amqp091.Error, 1)):
 				slog.Warn("connection closed", slogext.Error(err))
 				continue // create a new connection
 			}
