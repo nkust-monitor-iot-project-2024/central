@@ -4,8 +4,6 @@ WORKDIR /app
 RUN sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 
 COPY . .
-RUN go install github.com/go-task/task/v3/cmd/task@latest
-
 RUN task service-event-aggregator
 
 CMD ["/app/out/service-event-aggregator"]
