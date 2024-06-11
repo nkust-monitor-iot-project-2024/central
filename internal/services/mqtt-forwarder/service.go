@@ -9,7 +9,11 @@ package mqtt_forwarder
 import (
 	"context"
 	"fmt"
+	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	mqv2 "github.com/nkust-monitor-iot-project-2024/central/internal/mq/v2"
+	"github.com/rabbitmq/amqp091-go"
+	"log/slog"
+	"time"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/services"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
@@ -46,23 +50,39 @@ func (s *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("new mqtt receiver: %w", err)
 	}
 
-	amqpPublisher := NewAmqpPublisher(s.publisher)
-
-	convertedMqttMessage := make(chan TraceableEventMessage, 64)
-	adapter := NewAdapter(mqttForwarder.GetMqttMessageChannel(), convertedMqttMessage)
+	adapter := NewAdapter(mqttForwarder.GetMqttMessageChannel())
 
 	group, ctx := errgroup.WithContext(ctx)
-	group.Go(func() error {
-		adapter.Run(ctx)
-		return nil
-	})
+	convertedMqttMessage := adapter.StartConvert(ctx)
 
 	group.Go(func() error {
-		for message := range convertedMqttMessage {
-			//amqpPublisher.PublishFromChannel(ctx, message)
+		for connectionResult := range s.amqp.NewConnectionSupplier(ctx) {
+			connection, err := connectionResult.Get()
+			if err != nil {
+				return fmt.Errorf("failed to get connection: %w", err)
+			}
+			connectionClosed := connection.NotifyClose(make(chan *amqp091.Error, 1))
+
+			amqpPublisher := NewAmqpPublisher(connection)
+
+		taskloop:
+			for {
+				select {
+				case <-ctx.Done():
+					break taskloop // clean up connection supplier
+				case <-connectionClosed:
+					break taskloop // renew connection
+				case message := <-convertedMqttMessage:
+					if err := amqpPublisher.Publish(ctx, message); err != nil {
+						slog.ErrorContext(ctx, "failed to publish message", slogext.Error(err))
+					}
+				}
+			}
+
+			_ = connection.CloseDeadline(time.Now().Add(2 * time.Second))
 		}
-		//amqpPublisher.PublishFromChannel(ctx, convertedMqttMessage)
-		return nil
+
+		return ctx.Err()
 	})
 
 	return group.Wait()

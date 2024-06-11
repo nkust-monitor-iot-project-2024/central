@@ -175,6 +175,14 @@ func (s *Storer) runInConnection(ctx context.Context, connection *amqp091.Connec
 			slogext.Error(err))
 		return fmt.Errorf("consume events: %w", err)
 	}
+	defer func() {
+		err := channel.Cancel(consumer, false)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to cancel the consumer",
+				slog.String("consumer", consumer),
+				slogext.Error(err))
+		}
+	}()
 
 	for delivery := range deliveries {
 		// If the Acknowledger is nil, it means this message is not valid;

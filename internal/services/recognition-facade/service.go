@@ -11,7 +11,6 @@ import (
 	mqv2 "github.com/nkust-monitor-iot-project-2024/central/internal/mq/v2"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/discover"
-	"github.com/nkust-monitor-iot-project-2024/central/internal/mq"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/services"
 	"github.com/nkust-monitor-iot-project-2024/central/protos/entityrecognitionpb"
 	"go.uber.org/fx"
@@ -21,7 +20,7 @@ import (
 // FxModule is the fx module for the Service that handles the cleanup.
 var FxModule = fx.Module(
 	"recognition-facade",
-	mq.FxModule,
+	mqv2.FxModule,
 	discover.EntityRecognitionServiceFxModule,
 	fx.Provide(fx.Annotate(New, fx.As(new(services.Service)))),
 	fx.Invoke(services.BootstrapFxService),

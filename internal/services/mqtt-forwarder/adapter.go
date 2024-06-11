@@ -19,7 +19,6 @@ import (
 
 type Adapter struct {
 	rawMqttMessageChannel <-chan TraceableMqttPublish
-	convertedEventMessage chan<- TraceableEventMessage
 
 	tracer trace.Tracer
 }
@@ -31,28 +30,39 @@ type TraceableEventMessage struct {
 	SpanContext trace.SpanContext
 }
 
-func NewAdapter(rawMqttMessage <-chan TraceableMqttPublish, convertedMqttMessage chan<- TraceableEventMessage) *Adapter {
+func NewAdapter(rawMqttMessage <-chan TraceableMqttPublish) *Adapter {
 	return &Adapter{
 		rawMqttMessageChannel: rawMqttMessage,
-		convertedEventMessage: convertedMqttMessage,
 		tracer:                otel.GetTracerProvider().Tracer("mqtt-forwarder"),
 	}
 }
 
-func (a *Adapter) Run(parentCtx context.Context) {
-	for rawMqttMessage := range a.rawMqttMessageChannel {
-		if parentCtx.Err() != nil {
-			return
-		}
+func (a *Adapter) StartConvert(parentCtx context.Context) <-chan TraceableEventMessage {
+	convertedEventMessage := make(chan TraceableEventMessage, 64)
 
-		ctx := trace.ContextWithSpanContext(parentCtx, rawMqttMessage.SpanContext)
-		message, err := a.handleMessage(ctx, rawMqttMessage)
-		if err != nil {
-			continue
-		}
+	go func() {
+		defer close(convertedEventMessage)
+		for {
+			select {
+			case <-parentCtx.Done():
+				return
+			case rawMqttMessage := <-a.rawMqttMessageChannel:
+				if parentCtx.Err() != nil {
+					return
+				}
 
-		a.convertedEventMessage <- message
-	}
+				ctx := trace.ContextWithSpanContext(parentCtx, rawMqttMessage.SpanContext)
+				message, err := a.handleMessage(ctx, rawMqttMessage)
+				if err != nil {
+					continue
+				}
+
+				convertedEventMessage <- message
+			}
+		}
+	}()
+
+	return convertedEventMessage
 }
 
 func (a *Adapter) handleMessage(ctx context.Context, rawMqttMessage TraceableMqttPublish) (TraceableEventMessage, error) {

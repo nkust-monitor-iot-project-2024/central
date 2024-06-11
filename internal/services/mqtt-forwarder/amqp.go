@@ -2,10 +2,8 @@ package mqtt_forwarder
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	mqevent "github.com/nkust-monitor-iot-project-2024/central/internal/mq/event"
-	mqv2 "github.com/nkust-monitor-iot-project-2024/central/internal/mq/v2"
 	"github.com/rabbitmq/amqp091-go"
 	"github.com/samber/mo"
 	"go.opentelemetry.io/otel"
@@ -16,42 +14,19 @@ import (
 
 // AmqpPublisher sends the message to the AMQP broker.
 type AmqpPublisher struct {
-	connectionSupplier chan mo.Result[*amqp091.Connection]
-
-	connection mo.Option[*amqp091.Connection]
+	connection *amqp091.Connection
 
 	tracer     trace.Tracer
 	propagator propagation.TextMapPropagator
 }
 
 // NewAmqpPublisher creates a new AMQP publisher.
-func NewAmqpPublisher(ctx context.Context, amqp mqv2.AmqpWrapper) *AmqpPublisher {
-	supplier := amqp.NewConnectionSupplier(ctx)
-
+func NewAmqpPublisher(connection *amqp091.Connection) *AmqpPublisher {
 	return &AmqpPublisher{
-		connectionSupplier: supplier,
-		connection:         mo.None[*amqp091.Connection](),
-		tracer:             otel.GetTracerProvider().Tracer("amqp-publisher"),
-		propagator:         otel.GetTextMapPropagator(),
+		connection: connection,
+		tracer:     otel.GetTracerProvider().Tracer("amqp-publisher"),
+		propagator: otel.GetTextMapPropagator(),
 	}
-}
-
-// getConnection checks if the connection is already established and returns it.
-// If the connection is not established, it requests for a new connection.
-func (p *AmqpPublisher) getConnection() (*amqp091.Connection, error) {
-	existingConnection, ok := p.connection.Get()
-	if ok && !existingConnection.IsClosed() {
-		return existingConnection, nil
-	}
-
-	connectionResult := <-p.connectionSupplier
-	newConnection, err := connectionResult.Get()
-	if err != nil {
-		return nil, fmt.Errorf("connection: %w", err)
-	}
-
-	p.connection = mo.Some[*amqp091.Connection](newConnection)
-	return newConnection, nil
 }
 
 // Publish sends the TraceableEventMessage to the AMQP broker.
@@ -62,15 +37,7 @@ func (p *AmqpPublisher) Publish(ctx context.Context, message TraceableEventMessa
 
 	span.AddEvent("prepare AMQP connection and exchange")
 
-	connection, err := p.getConnection()
-	if err != nil {
-		span.SetStatus(codes.Error, "get connection")
-		span.RecordError(err)
-
-		return fmt.Errorf("get connection: %w", err)
-	}
-
-	channel, err := connection.Channel()
+	channel, err := p.connection.Channel()
 	if err != nil {
 		span.SetStatus(codes.Error, "get channel")
 		span.RecordError(err)
@@ -118,16 +85,14 @@ func (p *AmqpPublisher) Publish(ctx context.Context, message TraceableEventMessa
 		publishing,
 	)
 	if err != nil {
-		if errors.Is(err, context.Canceled) {
-			return err
-		}
-
 		span.SetStatus(codes.Error, "publish event")
 		span.RecordError(err)
 
 		return fmt.Errorf("publish event: %w", err)
 	}
+
 	span.AddEvent("published event")
+	span.SetStatus(codes.Ok, "event published")
 
 	return nil
 }
