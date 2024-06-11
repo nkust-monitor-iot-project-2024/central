@@ -8,6 +8,7 @@ package recognition_facade
 import (
 	"context"
 	"fmt"
+
 	mqv2 "github.com/nkust-monitor-iot-project-2024/central/internal/mq/v2"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/discover"
@@ -28,13 +29,13 @@ var FxModule = fx.Module(
 
 // Service is the core of the service, "recognition-facade".
 type Service struct {
-	amqp mqv2.AmqpWrapper
+	amqp *mqv2.AmqpWrapper
 
 	entityRecognitionClient entityrecognitionpb.EntityRecognitionClient
 }
 
 // New creates a new Service.
-func New(amqp mqv2.AmqpWrapper, entityRecognitionClient entityrecognitionpb.EntityRecognitionClient) *Service {
+func New(amqp *mqv2.AmqpWrapper, entityRecognitionClient entityrecognitionpb.EntityRecognitionClient) *Service {
 	return &Service{
 		amqp:                    amqp,
 		entityRecognitionClient: entityRecognitionClient,

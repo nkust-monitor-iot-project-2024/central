@@ -3,13 +3,14 @@ package recognition_facade
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"time"
+
 	mqevent "github.com/nkust-monitor-iot-project-2024/central/internal/mq/event"
 	mqv2 "github.com/nkust-monitor-iot-project-2024/central/internal/mq/v2"
 	"github.com/rabbitmq/amqp091-go"
 	"github.com/samber/mo"
 	"golang.org/x/sync/errgroup"
-	"log/slog"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/otelattrext"
@@ -116,7 +117,6 @@ func (r *Recognizer) Run(ctx context.Context) {
 					if err := r.triggerInvadedEvent(ctx, connection, invadedEvent); err != nil {
 						slog.Error("failed to trigger invaded event", slogext.Error(err))
 					}
-				default:
 				}
 			}
 
@@ -125,7 +125,6 @@ func (r *Recognizer) Run(ctx context.Context) {
 
 		return ctx.Err()
 	})
-
 }
 
 func (r *Recognizer) recognizeTask(ctx context.Context, connection *amqp091.Connection, rawInvadedEventChan chan<- *rawInvadedEvent) error {

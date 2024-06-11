@@ -9,11 +9,12 @@ package mqtt_forwarder
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"time"
+
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	mqv2 "github.com/nkust-monitor-iot-project-2024/central/internal/mq/v2"
 	"github.com/rabbitmq/amqp091-go"
-	"log/slog"
-	"time"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/services"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
@@ -31,12 +32,12 @@ var FxModule = fx.Module(
 
 // Service is the MQTT forwarder service.
 type Service struct {
-	amqp   mqv2.AmqpWrapper
+	amqp   *mqv2.AmqpWrapper
 	config utils.Config
 }
 
 // New creates a new MQTT forwarder service.
-func New(amqp mqv2.AmqpWrapper, config utils.Config) *Service {
+func New(amqp *mqv2.AmqpWrapper, config utils.Config) *Service {
 	return &Service{
 		amqp:   amqp,
 		config: config,
