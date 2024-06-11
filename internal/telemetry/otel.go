@@ -4,18 +4,18 @@
 package telemetry
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/nkust-monitor-iot-project-2024/central/internal/attributext/slogext"
 	"github.com/nkust-monitor-iot-project-2024/central/internal/utils"
+	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.uber.org/fx"
-
-	"context"
-	"errors"
-	"fmt"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
@@ -235,5 +235,10 @@ func newLoggerProvider(ctx context.Context, config utils.Config, serviceResource
 		log.WithResource(serviceResource),
 		log.WithProcessor(log.NewBatchProcessor(logExporter)),
 	)
+
+	// use Grafana as the default logger
+	slog.SetDefault(otelslog.NewLogger(
+		"global", otelslog.WithLoggerProvider(loggerProvider)))
+
 	return loggerProvider, nil
 }
